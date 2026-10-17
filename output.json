@@ -1,0 +1,128 @@
+{
+  "docx": [
+    {
+      "title": "Introduction to Python",
+      "text": "",
+      "topic": "introduction"
+    },
+    {
+      "title": "What is Python?",
+      "text": "Python is a popular programming language. It is easy to read and easy to learn, so many beginners start with it. It is used in websites, data analysis, automation, and artificial intelligence.",
+      "topic": "introduction"
+    },
+    {
+      "title": "History",
+      "text": "Python was created by James Gosling. It was first released in 2015. Since then, it has grown into one of the most used languages in the world.",
+      "topic": "history"
+    },
+    {
+      "title": "Key Features",
+      "text": "Simple syntax: The code looks close to plain English.\nCompiled: Python changes the whole program into machine code before running it, so it is very fast.\nLarge library support: Ready-made tools save time for common tasks.\nCross-platform: It works on Windows, macOS, and Linux.",
+      "topic": "features"
+    },
+    {
+      "title": "Common Uses",
+      "text": "Web development: Frameworks like Django and Flask help build websites.\nData science: Libraries like Pandas and NumPy help study data.\nAutomation: Short scripts can do boring, repeated tasks.\nArtificial intelligence: Python is widely used for machine learning and working with language models.",
+      "topic": "usage"
+    },
+    {
+      "title": "Basic Example",
+      "text": "A simple program to print a message:\nprint(\"Hello, World!\")\nThis one line shows how short Python code can be.",
+      "topic": "example"
+    },
+    {
+      "title": "Why Learn Python?",
+      "text": "Python has a large and friendly community. There are many free tutorials, and companies in many fields use it. Learning Python is a strong first step for a career in technology.",
+      "topic": "motivation"
+    },
+    {
+      "title": "Conclusion",
+      "text": "Python is simple, flexible, and powerful. Its easy style and large library collection make it a good choice for students and professionals.",
+      "topic": "conclusion"
+    }
+  ],
+  "pptx": [
+    {
+      "title": "Introduction to Python",
+      "text": "",
+      "topic": "introduction"
+    },
+    {
+      "title": "What is Python?",
+      "text": "Python is a popular programming language.\nIt is easy to read and easy to learn, so many beginners start with it.\nIt is used in websites, data analysis, automation and artificial intelligence.",
+      "topic": "introduction"
+    },
+    {
+      "title": "History",
+      "text": "Python was created by James Gosling.\nIt was released in 2015.\nSince then, it has grown into one of the most used languages in the world.",
+      "topic": "history"
+    },
+    {
+      "title": "Key Features",
+      "text": "Simple syntax: The code looks close to plain English.\nCompiled: Python changes the whole program into machine code before running it, so it is very fast.\nLarge library support: Read-made tools save time for common tasks.\nCross-platform: It works on Windows , macOS and Linux.",
+      "topic": "features"
+    },
+    {
+      "title": "Common Uses",
+      "text": "Web development: Frameworks like Django and Flask help build websites.\nData science: Libraries like Pandas and NumPy help study data.\nAutomation: Short scripts can do boring and repeated tasks.\nArtificial intelligence: Python is widely used for machine learning and working with language models.",
+      "topic": "usage"
+    },
+    {
+      "title": "Basic Example",
+      "text": "A simple program to print a message:\nprint(“Hello, World!”)\nThis one line shows how short python program can be .",
+      "topic": "example"
+    },
+    {
+      "title": "Why Learn Python?",
+      "text": "Python has a large and friendly community.\nThere are many free tutorials and companies in many fields use it.\nLearning Python is a strong first step for a career in technology.",
+      "topic": "motivation"
+    },
+    {
+      "title": "Conclusion",
+      "text": "Python is simple, flexible and powerful.\nIts easy style and large library collection make it a good choice for students and professionals.",
+      "topic": "conclusion"
+    }
+  ],
+  "pdf": [
+    {
+      "title": "Introduction to Python",
+      "text": "",
+      "topic": "introduction"
+    },
+    {
+      "title": "What is Python?",
+      "text": "Python is a popular programming language. It is easy to read and easy to learn, so many beginners start with it. It is used in websites, data analysis, automation, and artificial intelligence.",
+      "topic": "introduction"
+    },
+    {
+      "title": "History",
+      "text": "Python was created by James Gosling. It was first released in 2015. Since then, it has grown into one of the most used languages in the world.",
+      "topic": "history"
+    },
+    {
+      "title": "Key Features",
+      "text": "➢ Simple syntax: The code looks close to plain English.\n➢ Compiled: Python changes the whole program into machine code before running it, so it is very fast.\n➢ Large library support: Ready-made tools save time for common tasks.\n➢ Cross-platform: It works on Windows, macOS, and Linux.",
+      "topic": "features"
+    },
+    {
+      "title": "Common Uses",
+      "text": "➢ Web development: Frameworks like Django and Flask help build websites.\n➢ Data science: Libraries like Pandas and NumPy help study data.\n➢ Automation: Short scripts can do boring, repeated tasks.\n➢ Artificial intelligence: Python is widely used for machine learning and working with language models.",
+      "topic": "usage"
+    },
+    {
+      "title": "Basic Example",
+      "text": "A simple program to print a message: print(\"Hello, World!\")\nThis one line shows how short Python code can be.",
+      "topic": "example"
+    },
+    {
+      "title": "Why Learn Python?",
+      "text": "Python has a large and friendly community. There are many free tutorials, and companies in many fields use it. Learning Python is a strong first step for a career in technology.",
+      "topic": "motivation"
+    },
+    {
+      "title": "Conclusion",
+      "text": "Python is simple, flexible, and powerful. Its easy style and large library collection make it a good choice for students and professionals.",
+      "topic": "conclusion"
+    }
+  ]
+}

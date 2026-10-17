@@ -1,0 +1,25 @@
+Scanned PDF Strategy
+
+Problem
+A scanned PDF is a picture of a page. It has no real text inside it. Normal text extractors like PyMuPDF or pdfplumber read the text layer of a PDF, so on a scanned file they return nothing, or only garbage.
+
+Decision
+The pipeline must not send scanned PDFs to a standard text extractor. It must send them directly to:
+1. An OCR engine (for example Tesseract), or
+2. An LLM vision API (for example Gemini Vision).
+
+How the pipeline decides
+Step 1: Open the PDF and try to extract text from each page.
+Step 2: If a page returns little or no text (for example, fewer than 20 characters), mark it as scanned.
+Step 3: Send scanned pages to OCR or Gemini Vision.
+Step 4: Send normal pages to PyMuPDF.
+Step 5: Convert all results into the same format (a list of dictionaries with "title" and "text").
+
+Why this is needed
+- It stops the pipeline from saving empty text.
+- It keeps the output quality the same for all PDF types.
+- It avoids wrong answers later, because the AI would have nothing to read.
+
+Trade-offs
+- OCR is free and runs on the computer, but it can make mistakes on blurry pages.
+- Gemini Vision is more accurate, but it needs an API key and internet, and it is slower.

@@ -1,0 +1,16 @@
+Audio test results
+
+Clean:  match 100%
+Noisy:  match 100%
+Accent: match 100%
+
+Finding: Gemini handled my moderate background noise and my changed
+accent with no word errors. The score compares words only, so
+punctuation and capital letters do not change it.
+
+Planted errors (James Gosling, 2015) were kept exactly as spoken.
+The transcript does not fix mistakes, so the error-finding step
+can catch them later.
+
+Limit of this test: my noise and accent were mild. A harder clip
+(loud noise, fast or mumbled speech) may give a lower score.
