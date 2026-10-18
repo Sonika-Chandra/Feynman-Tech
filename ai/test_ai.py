@@ -113,9 +113,12 @@ def pick_topics(arg):
 def cmd_question(topic_arg):
     for name in pick_topics(topic_arg):
         t = TOPICS[name]
-        out = ai.next_question(t["source"], [], t["vague"])
-        print(f"\n[{name}] student said: {t['vague']}")
-        print(f"[{name}] AI asks: {out['next_question']}   (should_stop={out['should_stop']})")
+        first = ai.opening_question(t["source"])
+        print(f"\n[{name}] AI opens: {first['next_question']}   (needs_whiteboard={first['needs_whiteboard']})")
+        history = [{"role": "ai", "text": first["next_question"]}]
+        out = ai.next_question(t["source"], history, t["vague"])
+        print(f"[{name}] student said: {t['vague']}")
+        print(f"[{name}] AI asks: {out['next_question']}   (round {out['round']}, should_stop={out['should_stop']}, needs_whiteboard={out['needs_whiteboard']})")
         q_marks = out["next_question"].count("?")
         print("   check: exactly one question mark ->", "OK" if q_marks == 1 else f"CHECK MANUALLY ({q_marks} found)")
         pause()
@@ -132,17 +135,18 @@ def cmd_loop(topic_arg):
         name = pick_topics(arg)[0]
         source = TOPICS[name]["source"]
     print(f"\nTOPIC: {name}\n\nREFERENCE TEXT:\n{source}\n")
-    reply = input("Explain the topic in your own words:\n> ")
-    history = []
+    first = ai.opening_question(source)
+    print(f"AI (round 1): {first['next_question']}" + ("   [whiteboard]" if first["needs_whiteboard"] else ""))
+    history = [{"role": "ai", "text": first["next_question"]}]
     while True:
+        reply = input("> ")
         out = ai.next_question(source, history, reply)
         history.append({"role": "student", "text": reply})
         if out["should_stop"]:
-            print("\n(stopped: no more questions)")
+            print("\n(that was question 5: the quiz is over)")
             break
-        print(f"\nAI (round {out['round']}): {out['next_question']}")
+        print(f"\nAI (round {out['round']}): {out['next_question']}" + ("   [whiteboard]" if out["needs_whiteboard"] else ""))
         history.append({"role": "ai", "text": out["next_question"]})
-        reply = input("> ")
     print("\nFinal score:")
     print_score(ai.final_score(source, history))
 

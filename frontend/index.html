@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vocalis – teach it to learn it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar" id="topbar" hidden>
+    <a class="brand" href="#" id="brandLink"><span class="brand-mark">V</span><span>Vocalis</span></a>
+    <nav class="topnav" aria-label="Main">
+      <button class="nav-link" data-nav="home">Home</button>
+      <button class="nav-link" data-nav="about">About</button>
+    </nav>
+    <div class="topbar-right" id="topbarRight">
+      <div class="user-box" title="Signed in"><span class="avatar" id="userAvatar">?</span><span class="user-name" id="userChip"></span></div>
+      <button class="btn ghost small" id="logoutBtn">Log out</button>
+    </div>
+  </header>
+
+  <!-- ============================ LOGIN ============================ -->
+  <section class="screen" id="screen-auth">
+    <div class="auth">
+      <aside class="auth-hero">
+        <div class="brand big"><span class="brand-mark">V</span><span>Vocalis</span></div>
+        <h1>If you can teach it,<br><em>you know it.</em></h1>
+        <p>Upload your notes, explain a topic out loud, and a curious AI student will question you until the gaps show. Then it hands you a report of exactly what to revise.</p>
+        <ul class="hero-points">
+          <li><b>Speak or type</b> your explanation</li>
+          <li><b>Five questions</b> that follow your answers</li>
+          <li><b>Whiteboard</b> for diagrams, graphs and maths</li>
+          <li><b>A gap report</b> you can save and test again</li>
+        </ul>
+        <button type="button" class="link-btn" id="aboutFromAuth">What is the Feynman technique? About Vocalis →</button>
+      </aside>
+      <div class="auth-card">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-mode="login" role="tab">Log in</button>
+          <button class="seg-btn" data-mode="register" role="tab">Create account</button>
+        </div>
+        <form id="authForm" autocomplete="on" novalidate>
+          <label class="field" id="nameField" hidden>
+            <span>Your name</span>
+            <input id="authName" type="text" autocomplete="name" placeholder="Asha">
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input id="authPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters" required>
+          </label>
+          <p class="form-error" id="authError" role="alert"></p>
+          <button class="btn primary wide" id="authSubmit" type="submit">Log in</button>
+        </form>
+        <p class="fine">You stay signed in on this device until you press Log out.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ HOME ============================ -->
+  <section class="screen" id="screen-home" hidden>
+    <div class="wrap">
+      <div class="home-head">
+        <p class="eyebrow">Welcome back</p>
+        <h2 id="homeTitle">Ready to teach something?</h2>
+      </div>
+      <div class="home-grid">
+        <div class="card">
+          <h3>Start a new session</h3>
+          <p class="muted">Upload your study material (PDF, PowerPoint, Word, text or a photo of your notes). You can also upload a gap report from an earlier session to be tested on exactly what you got wrong.</p>
+          <input type="file" id="fileInput" class="sr-only" accept=".pdf,.pptx,.docx,.txt,.md,.png,.jpg,.jpeg" tabindex="-1">
+          <div class="drop" id="drop" role="button" tabindex="0" aria-label="Choose a file to upload">
+            <span class="drop-icon">⇪</span>
+            <strong id="dropTitle">Drop a file here or click to choose</strong>
+            <span class="muted small" id="dropHint">PDF · PPTX · DOCX · TXT · MD · PNG · JPG &nbsp;·&nbsp; up to 20 MB</span>
+            <button type="button" class="btn primary small" id="chooseBtn">Choose file</button>
+          </div>
+          <p class="form-error" id="uploadError" role="alert"></p>
+          <label class="field lang-field">
+            <span>Revision notes language</span>
+            <select id="langSelect">
+              <option>Kannada</option><option>Hindi</option><option>Tamil</option><option>Telugu</option><option>Malayalam</option><option>English</option>
+            </select>
+          </label>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <h3>Your sessions</h3>
+          </div>
+          <div id="historyList" class="history"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ ABOUT ============================ -->
+  <section class="screen" id="screen-about" hidden>
+    <div class="wrap about">
+      <button class="link-btn" id="aboutBack">← Back</button>
+      <div class="about-hero">
+        <p class="eyebrow">About Vocalis</p>
+        <h1>If you can teach it,<br><em>you know it.</em></h1>
+        <p class="lead">Vocalis is a study partner built on the Feynman technique. You explain a topic out loud to a curious AI student, it asks questions until the gaps in your understanding show, and then it hands you a clear report of exactly what to revise.</p>
+      </div>
+
+      <h2>The Feynman technique</h2>
+      <p class="lead">The technique is named after the physicist Richard Feynman, who was famous for explaining difficult ideas in plain words. The idea is simple: <b>you do not really understand something until you can explain it simply.</b> It works in four steps.</p>
+      <div class="steps4">
+        <div class="step4"><span class="n">1</span><h4>Choose a concept</h4><p>Pick one idea you want to learn, and write down everything you know about it.</p></div>
+        <div class="step4"><span class="n">2</span><h4>Teach it simply</h4><p>Explain it as if to a beginner, using your own words and no jargon you cannot unpack.</p></div>
+        <div class="step4"><span class="n">3</span><h4>Find the gaps</h4><p>Notice where you stumble, go vague or get something wrong. Those are the gaps in your understanding.</p></div>
+        <div class="step4"><span class="n">4</span><h4>Review and simplify</h4><p>Go back to your notes, fix each gap, then explain it again, shorter and clearer.</p></div>
+      </div>
+      <div class="callout">The hard part is step 3. When you explain to yourself, it is easy to skip over what you do not know. A listener who asks good questions makes the gaps impossible to hide. That is the part Vocalis automates.</div>
+
+      <h2>How Vocalis puts each step into practice</h2>
+      <div class="map-row"><div class="l">1 · Choose a concept<small>Upload and pick a topic</small></div><div><ul>
+        <li>Upload your own notes: PDF, PowerPoint, Word, text, Markdown or a photo.</li>
+        <li>Long files are split into numbered subtopics with clear headings, and you choose the one to be tested on.</li></ul></div></div>
+      <div class="map-row"><div class="l">2 · Teach it simply<small>Explain to a curious AI</small></div><div><ul>
+        <li>The AI opens the conversation and asks exactly five questions, each one following your last answer.</li>
+        <li>Answer by typing, speaking, or drawing and labelling on the whiteboard, including diagrams the AI draws for you to label.</li>
+        <li>Optional time limit per question and optional read-aloud keep it feeling like a real viva.</li></ul></div></div>
+      <div class="map-row"><div class="l">3 · Find the gaps<small>Scores, gaps and fact-check</small></div><div><ul>
+        <li>An examiner AI scores accuracy, completeness, consistency and clarity (each out of 10) using only your own notes, then gives an overall score out of 100.</li>
+        <li>Every wrong or missing idea becomes a gap with what you said, the correct explanation, why it matters and a question to test yourself.</li>
+        <li>A web-search fact-check flags anything in your notes or your answers that may be wrong.</li></ul></div></div>
+      <div class="map-row"><div class="l">4 · Review and simplify<small>Notes, reports and re-testing</small></div><div><ul>
+        <li>Revision notes focus only on the parts you struggled with, and can be translated into Kannada, Hindi, Tamil, Telugu or Malayalam.</li>
+        <li>Download a detailed gap report and a full session report as Word documents.</li>
+        <li>Upload the gap report again and Vocalis tests you on exactly those gaps. Repeat until the gaps close.</li></ul></div></div>
+
+      <h2>What is inside</h2>
+      <div class="feat-grid">
+        <div class="feat"><b>Voice with a live orb</b><span>Speak your answer; the animated rings move with your voice. An accurate mode transcribes your recording again for technical terms.</span></div>
+        <div class="feat"><b>Whiteboard that is understood</b><span>Draw graphs, label diagrams and work through maths. The AI reads your drawing and marks it as part of your answer.</span></div>
+        <div class="feat"><b>Languages</b><span>Dictate in English, Hindi, Kannada, Tamil or Telugu, and get revision notes in your own language.</span></div>
+        <div class="feat"><b>Reports you keep</b><span>Gap report and full report as Word files, plus a re-uploadable version to practise your gaps.</span></div>
+        <div class="feat"><b>Your own account</b><span>Your sessions and reports are private to you and stay saved, so you can return to them any time.</span></div>
+        <div class="feat"><b>Honest scoring</b><span>The examiner only credits what you said, never the tutor's questions, and grades against your notes.</span></div>
+      </div>
+
+      <h2>Built with</h2>
+      <p>Flask and SQLite on the back end, Google Gemini for the questions, scoring, drawing understanding, fact-check and translation, and the browser's own speech tools for live voice. Made for Craft N Code Karnataka 2026 · AI for Education.</p>
+      <p><button class="btn primary" id="aboutStart">Start a session</button></p>
+    </div>
+  </section>
+
+  <!-- ============================ TOPICS ============================ -->
+  <section class="screen" id="screen-topics" hidden>
+    <div class="wrap">
+      <button class="link-back" id="topicsBack">← Choose another file</button>
+      <p class="eyebrow" id="topicsFile"></p>
+      <h2>What do you want to be tested on?</h2>
+      <p class="muted">Pick one topic, or test yourself on the whole document. The AI will open the conversation with its first question.</p>
+      <div class="card settings">
+        <h3>Session settings</h3>
+        <div class="setting">
+          <span class="setting-label">Time to answer each question</span>
+          <div class="chips" id="timeChips" role="group" aria-label="Time limit per question">
+            <button class="chip-btn active" data-sec="0">No limit</button>
+            <button class="chip-btn" data-sec="60">1 min</button>
+            <button class="chip-btn" data-sec="120">2 min</button>
+            <button class="chip-btn" data-sec="180">3 min</button>
+            <button class="chip-btn" data-sec="300">5 min</button>
+          </div>
+        </div>
+        <div class="setting">
+          <span class="setting-label">Speech language</span>
+          <select id="speechLang" aria-label="Speech language">
+            <option value="en-IN">English (India)</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="hi-IN">Hindi</option>
+            <option value="kn-IN">Kannada</option>
+            <option value="ta-IN">Tamil</option>
+            <option value="te-IN">Telugu</option>
+          </select>
+        </div>
+        <label class="check"><input type="checkbox" id="optAccurate"><span><b>Accurate voice mode</b> Gemini listens to your recording again for a more exact transcript (uses one extra AI request per spoken answer).</span></label>
+        <label class="check"><input type="checkbox" id="optSpeak"><span><b>Read each question aloud</b> Optional. The orb pulses while the question is spoken.</span></label>
+        <div class="setting" id="voiceBox">
+          <span class="setting-label">Voice</span>
+          <select id="voiceEngine" aria-label="Voice type">
+            <option value="ai">AI voice (natural, uses 1 AI request per question)</option>
+            <option value="browser">Device voice (free, instant)</option>
+          </select>
+          <select id="voiceName" aria-label="Voice"></select>
+          <button type="button" class="btn ghost" id="voicePreview">Preview</button>
+        </div>
+      </div>
+      <div class="topic-grid" id="topicGrid"></div>
+      <div class="topics-foot">
+        <button class="btn ghost" id="wholeDocBtn">Test me on the whole document</button>
+      </div>
+      <p class="form-error" id="startError" role="alert"></p>
+    </div>
+  </section>
+
+  <!-- ============================ CHAT ============================ -->
+  <section class="screen chat-screen" id="screen-chat" hidden>
+    <canvas id="orb" class="orb" aria-hidden="true"></canvas>
+    <div class="chat-layout" id="chatLayout">
+      <div class="chat-col">
+        <div class="chat-head">
+          <button class="btn ghost small" id="exitChat">✕ End</button>
+          <div class="chat-title">
+            <strong id="chatTopic"></strong>
+            <span class="muted small" id="chatRoundLabel"></span>
+          </div>
+          <div class="timer" id="timer" hidden aria-live="off"><span id="timerText">1:00</span><i class="timer-bar"><b id="timerBar"></b></i></div>
+          <button class="icon-btn small" id="speakToggle" title="Read questions aloud" aria-pressed="false">🔊</button>
+          <div class="dots" id="roundDots" aria-hidden="true"></div>
+        </div>
+
+        <div class="thread" id="thread" aria-live="polite"></div>
+
+        <div class="composer" id="composer">
+          <div class="attach-row" id="attachRow" hidden></div>
+          <div class="composer-box">
+            <textarea id="answerBox" rows="1" placeholder="Type your explanation, or tap the microphone and speak…"></textarea>
+            <div class="composer-actions">
+              <button class="icon-btn" id="wbToggle" title="Open whiteboard" aria-pressed="false">✎<span>Whiteboard</span></button>
+              <button class="icon-btn" id="micBtn" title="Speak your answer" aria-pressed="false">🎙<span>Speak</span></button>
+              <button class="btn primary" id="sendBtn">Send</button>
+            </div>
+          </div>
+          <p class="mic-status" id="micStatus" hidden></p>
+        </div>
+      </div>
+
+      <aside class="wb-col" id="wbCol" aria-label="Whiteboard">
+        <div class="wb-head">
+          <strong>Whiteboard</strong>
+          <span class="muted small" id="wbHint">Draw, label or plot your answer. It is sent with your reply.</span>
+          <button class="icon-btn small" id="wbClose" title="Close whiteboard">✕</button>
+        </div>
+        <div class="wb-tools" id="wbTools">
+          <div class="tool-group" role="group" aria-label="Tools">
+            <button class="tool active" data-tool="pen" title="Pen">Pen</button>
+            <button class="tool" data-tool="line" title="Straight line">Line</button>
+            <button class="tool" data-tool="arrow" title="Arrow">Arrow</button>
+            <button class="tool" data-tool="rect" title="Rectangle">Box</button>
+            <button class="tool" data-tool="ellipse" title="Circle or ellipse">Circle</button>
+            <button class="tool" data-tool="mark" title="Click a spot to drop a point, then type its name">Mark &amp; name</button>
+            <button class="tool" data-tool="text" title="Type text anywhere">Text</button>
+            <button class="tool" data-tool="eraser" title="Eraser">Erase</button>
+          </div>
+          <div class="tool-group" role="group" aria-label="Colour">
+            <button class="swatch active" data-color="#1b1214" style="--c:#1b1214" title="Black"></button>
+            <button class="swatch" data-color="#8f2a3f" style="--c:#8f2a3f" title="Maroon"></button>
+            <button class="swatch" data-color="#2d5a8a" style="--c:#2d5a8a" title="Blue"></button>
+            <button class="swatch" data-color="#2f6f5e" style="--c:#2f6f5e" title="Green"></button>
+          </div>
+          <div class="tool-group">
+            <input type="range" id="wbSize" min="2" max="14" value="4" title="Thickness" aria-label="Thickness">
+          </div>
+          <div class="tool-group">
+            <button class="tool" id="wbGrid" aria-pressed="false" title="Graph paper">Grid</button>
+            <button class="tool" id="wbAxes" title="Add x and y axes">Axes</button>
+            <button class="tool" id="wbUndo" title="Undo">Undo</button>
+            <button class="tool" id="wbClear" title="Clear">Clear</button>
+          </div>
+        </div>
+        <div class="wb-stage" id="wbStage">
+          <canvas id="wbCanvas"></canvas>
+          <input id="wbText" class="wb-text" type="text" hidden placeholder="Type, then Enter">
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============================ REPORT ============================ -->
+  <section class="screen" id="screen-report" hidden>
+    <div class="wrap report">
+      <div class="report-head">
+        <div>
+          <p class="eyebrow" id="reportTopic"></p>
+          <h2>Your results</h2>
+        </div>
+        <div class="report-actions">
+          <button class="btn ghost" id="downloadBtn" disabled>Gap report (Word)</button>
+          <button class="btn ghost" id="fullDocBtn" disabled>Full report (Word)</button>
+          <button class="btn ghost" id="mdBtn" disabled title="Plain text version of the gap report">Gap report (.md)</button>
+          <button class="btn primary" id="retestBtn" disabled>Test me on my gaps</button>
+        </div>
+      </div>
+
+      <div class="report-status" id="reportStatus" hidden></div>
+
+      <div class="loading-card" id="reportLoading">
+        <div class="spinner"></div>
+        <p><strong>Marking your answers…</strong><br><span class="muted small">The AI is comparing everything you said with your notes.</span></p>
+      </div>
+
+      <div id="reportBody" hidden>
+        <div class="score-row">
+          <div class="score-ring" id="scoreRing" style="--pct:0">
+            <div class="score-inner"><b id="scoreNum">0</b><span>/ 100</span></div>
+          </div>
+          <div class="score-summary">
+            <h3>Summary</h3>
+            <p id="scoreSummary"></p>
+          </div>
+        </div>
+
+        <div class="metrics" id="metrics"></div>
+
+        <div class="tab-cards" role="tablist">
+          <button class="tab-card active" data-tab="gaps" role="tab"><span class="tc-icon">⚑</span><span class="tc-text"><b>Gaps to review</b><small id="tcGaps">Preparing…</small></span></button>
+          <button class="tab-card" data-tab="fact" role="tab"><span class="tc-icon">✓</span><span class="tc-text"><b>Fact-check</b><small id="tcFact">Preparing…</small></span></button>
+          <button class="tab-card" data-tab="notes" role="tab"><span class="tc-icon">✎</span><span class="tc-text"><b>Revision notes</b><small id="tcNotes">Preparing…</small></span></button>
+          <button class="tab-card" data-tab="transcript" role="tab"><span class="tc-icon">☰</span><span class="tc-text"><b>Conversation</b><small id="tcConv">…</small></span></button>
+        </div>
+        <div class="tab-panel" id="tab-gaps"></div>
+        <div class="tab-panel" id="tab-fact" hidden></div>
+        <div class="tab-panel" id="tab-notes" hidden></div>
+        <div class="tab-panel" id="tab-transcript" hidden></div>
+
+        <div class="report-foot">
+          <button class="btn ghost" id="retrySame">Try this topic again</button>
+          <button class="btn ghost" id="goHome">Back to home</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="mode-badge" id="modeBadge" hidden title="Which AI the backend is using"></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/wav.js"></script>
+<script src="js/speech.js"></script>
+<script src="js/whiteboard.js"></script>
+<script src="js/orb.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

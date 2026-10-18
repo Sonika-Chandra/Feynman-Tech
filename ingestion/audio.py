@@ -1,75 +1,64 @@
-import os
-import json
-import glob
-import difflib
-import re
-from dotenv import load_dotenv
-from google import genai
+"""Spoken answer (audio file) -> text, using Gemini."""
+import shutil
+import subprocess
 
-load_dotenv()
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+from ._llm import ask, fake_mode, part
+from .errors import ExtractionError
 
-MODEL = "gemini-3.5-flash"
-
-PROMPT = (
-    "Transcribe this audio exactly as spoken, word for word. "
-    "Do not fix mistakes or add words. Return only the transcript."
+SUPPORTED = {"audio/wav", "audio/mp3", "audio/aiff", "audio/aac", "audio/ogg", "audio/flac"}
+ALIASES = {
+    "audio/x-wav": "audio/wav", "audio/wave": "audio/wav", "audio/vnd.wave": "audio/wav",
+    "audio/mpeg": "audio/mp3", "audio/x-aiff": "audio/aiff", "audio/x-flac": "audio/flac",
+}
+SYSTEM = (
+    "You are a precise speech-to-text tool for a student explaining a topic out loud (often with an Indian English accent). "
+    "Write exactly the words that were spoken, in order, with normal punctuation and capital letters. "
+    "Do not summarise, correct the grammar, translate or add commentary. Drop only filler sounds like 'um' and 'uh'. "
+    "If a word is unclear, use the closest word that fits the topic. "
+    "Output only the transcript. If there is no speech, output nothing."
 )
-
-REFERENCE = (
-    "Python is a popular programming language. It is easy to read and "
-    "easy to learn, so many beginners start with it. Python was created "
-    "by James Gosling. It was first released in 2015. Frameworks like "
-    "Django and Flask help build websites. Libraries like Pandas and "
-    "NumPy help study data."
-)
+MAX_BYTES = 18 * 1024 * 1024
 
 
-def words(text):
-    return re.findall(r"[a-z0-9]+", text.lower())
+def normalise_mime(mime_type):
+    m = (mime_type or "").split(";")[0].strip().lower()
+    return ALIASES.get(m, m)
 
 
-def match_score(a, b):
-    return round(difflib.SequenceMatcher(None, words(a), words(b)).ratio() * 100, 1)
+def _to_wav(data):
+    """Converts any audio to 16 kHz mono WAV with ffmpeg, if ffmpeg is installed. Returns None otherwise."""
+    exe = shutil.which("ffmpeg")
+    if not exe:
+        return None
+    try:
+        r = subprocess.run([exe, "-v", "error", "-i", "pipe:0", "-ac", "1", "-ar", "16000", "-f", "wav", "pipe:1"],
+                           input=data, capture_output=True, timeout=60)
+        return r.stdout if r.returncode == 0 and r.stdout else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
-def find_audio(name):
-    for path in os.listdir("."):
-        low = path.lower()
-        if low.startswith(name) and low.endswith(
-            (".mp3", ".wav", ".m4a", ".mp4", ".aac", ".flac", ".ogg")
-        ):
-            return path
-    return None
-    
+def transcribe(data, mime_type, context=None):
+    """`context` is an optional piece of the study material; it helps Gemini spell technical terms correctly."""
+    if not data:
+        raise ExtractionError("The audio recording was empty.")
+    if len(data) > MAX_BYTES:
+        raise ExtractionError("The recording is too long. Keep each answer under a few minutes.")
+    if fake_mode():
+        return "(fake transcript of the spoken answer)"
 
+    mime = normalise_mime(mime_type)
+    if mime not in SUPPORTED:
+        wav = _to_wav(data)
+        if wav:
+            data, mime = wav, "audio/wav"
+        # otherwise try the original format anyway; Gemini may accept it
 
-def transcribe(path):
-    uploaded = client.files.upload(file=path,config={"mime_type":"audio/mp4"})
-    response = client.models.generate_content(
-        model=MODEL, contents=[PROMPT, uploaded]
-    )
-    return response.text.strip()
-
-
-if __name__ == "__main__":
-    results = {}
-    for name in ["clean", "noisy", "accent"]:
-        path = find_audio(name)
-        if not path:
-            print(name, "- file not found")
-            continue
-        try:
-            text = transcribe(path)
-            results[name] = {"file": path, "transcript": text,
-                             "match_percent": match_score(REFERENCE, text)}
-            print(name.upper(), "(" + path + ")")
-            print(text)
-            print("Match with original:", results[name]["match_percent"], "%")
-        except Exception as error:
-            print(name, "- ERROR:", error)
-        print("-" * 40)
-
-    with open("transcripts.json", "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-    print("Saved transcripts.json")
+    prompt = "Transcribe this audio."
+    if context:
+        prompt += ("\n\nThe speaker is explaining the following topic. Use it only to spell technical terms and names correctly; "
+                   "do not add words that were not spoken:\n" + context[:1500])
+    text = ask([part(data, mime or "audio/wav"), prompt], SYSTEM, "")
+    if not text:
+        raise ExtractionError("No speech was heard in the recording.")
+    return text

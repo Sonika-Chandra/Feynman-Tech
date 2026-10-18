@@ -1,69 +1,126 @@
-import fitz
+"""PDF -> sections. Headings are found from font size and boldness, so real structure survives."""
+import re
 from collections import Counter
-from clean_text import (
-    strip_line_spaces,
-    remove_page_numbers,
-    fix_hyphens,
-    fix_broken_lines,
-    clean_blank_lines,
-)
+
+from . import topics
+from .errors import ExtractionError
 
 
-def get_lines(path):
-    doc = fitz.open(path)
+def _collect(doc):
     lines = []
-    for page in doc:
-        for block in page.get_text("dict")["blocks"]:
-            if block["type"] != 0:
+    for pno, page in enumerate(doc):
+        for block in page.get_text("dict").get("blocks", []):
+            if block.get("type") != 0:
                 continue
-            for line in block["lines"]:
-                text = "".join(s["text"] for s in line["spans"]).strip()
-                if not text:
+            for line in block.get("lines", []):
+                spans = [s for s in line.get("spans", []) if s.get("text", "").strip()]
+                if not spans:
                     continue
-                size = round(max(s["size"] for s in line["spans"]), 1)
-                lines.append((text, size))
+                text = "".join(s["text"] for s in spans).strip()
+                size = max(s["size"] for s in spans)
+                bold = all((s.get("flags", 0) & 16) or "bold" in s.get("font", "").lower() for s in spans)
+                lines.append({"page": pno, "text": text, "size": size, "bold": bool(bold)})
     return lines
 
 
-def clean_section_text(text):
-    text = strip_line_spaces(text)
-    text = remove_page_numbers(text)
-    text = fix_hyphens(text)
-    text = fix_broken_lines(text)
-    return clean_blank_lines(text)
+def _drop_repeats(lines, pages):
+    """Removes page numbers and headers or footers that repeat on most pages."""
+    def key(t):
+        return re.sub(r"\d+", "#", t.strip().lower())
+
+    seen = {}
+    for l in lines:
+        seen.setdefault(key(l["text"]), set()).add(l["page"])
+    out = []
+    for l in lines:
+        t = l["text"].strip()
+        if re.fullmatch(r"(page\s*)?\d{1,4}(\s*(of|/)\s*\d{1,4})?", t.lower()):
+            continue
+        if pages >= 3 and len(t) < 90 and len(seen[key(t)]) >= max(3, pages * 0.5):
+            continue
+        out.append(l)
+    return out
 
 
-def extract_pdf(path):
-    lines = get_lines(path)
+def _join_body(texts):
+    out = ""
+    for t in texts:
+        if not out:
+            out = t
+        elif out.endswith("-") and t[:1].islower():
+            out = out[:-1] + t
+        elif re.match(r"^([•●▪\-–*]|\d+[.)])\s", t) or (out[-1] in ".!?:" and t[:1].isupper()):
+            out += "\n" + t
+        else:
+            out += " " + t
+    return out
+
+
+def _sections_by_font(lines):
     if not lines:
         return []
+    weight = Counter()
+    for l in lines:
+        weight[round(l["size"] * 2) / 2] += len(l["text"])
+    body = weight.most_common(1)[0][0]
 
-    sizes = Counter()
-    for text, size in lines:
-        sizes[size] += len(text)
-    body_size = sizes.most_common(1)[0][0]
+    def is_head(l):
+        t = l["text"]
+        if len(t) > 100 or re.fullmatch(r"[\d\W]+", t):
+            return False
+        if l["size"] >= body * 1.15:
+            return True
+        return l["bold"] and l["size"] >= body * 0.95 and len(t) <= 70 and t[-1] not in ".,;"
 
-    sections = []
-    current = None
-    for text, size in lines:
-        if size >= body_size + 1:
-            if current:
-                sections.append(current)
-            current = {"title": text, "text": ""}
+    secs, title, texts, last_head_size = [], None, [], None
+
+    def flush():
+        if texts or title:
+            secs.append({"title": title or "Introduction", "text": _join_body(texts)})
+
+    i = 0
+    while i < len(lines):
+        l = lines[i]
+        if is_head(l):
+            flush()
+            texts = []
+            title, last_head_size = l["text"], l["size"]
+            while i + 1 < len(lines) and is_head(lines[i + 1]) and abs(lines[i + 1]["size"] - last_head_size) < 0.6:
+                i += 1
+                title += " " + lines[i]["text"]
         else:
-            if current is None:
-                current = {"title": "Untitled", "text": ""}
-            current["text"] += text + "\n"
-    if current:
-        sections.append(current)
-
-    for item in sections:
-        item["text"] = clean_section_text(item["text"])
-    return sections
+            texts.append(l["text"])
+        i += 1
+    flush()
+    return secs
 
 
-if __name__ == "__main__":
-    for item in extract_pdf("master.pdf"):
-        print("TITLE:", item["title"])
-        print("TEXT:", item["text"])
-        print("-" * 40)
+def read(path):
+    try:
+        import pymupdf as fitz
+    except ImportError:          # older PyMuPDF versions
+        import fitz
+    try:
+        doc = fitz.open(path)
+    except Exception:
+        raise ExtractionError("This PDF could not be opened. It may be damaged.")
+    if doc.needs_pass:
+        raise ExtractionError("This PDF is password protected. Remove the password and upload it again.")
+
+    lines = _collect(doc)
+    if sum(len(l["text"]) for l in lines) < 30:          # scanned PDF: no text layer
+        from . import image_reader
+        return topics.split_sections(image_reader.ocr_pdf(path))
+
+    lines = _drop_repeats(lines, doc.page_count)
+    secs = topics.finalize(topics.merge_small(_sections_by_font(lines)))
+    if len(secs) >= 2:
+        return secs
+    return topics.split_sections(_join_body_pages(lines))
+
+
+def _join_body_pages(lines):
+    pages = {}
+    for l in lines:
+        pages.setdefault(l["page"], []).append(l["text"])
+    return "\n\n".join(_join_body(t) for _, t in sorted(pages.items()))
