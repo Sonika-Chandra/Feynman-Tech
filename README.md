@@ -4,9 +4,9 @@ An AI study partner built on the **Feynman technique**. You upload your own note
 to a curious AI "student", and it questions you until your gaps show. You finish with a score, a detailed gap report and revision notes,
 and you can feed the gap report back in to practise exactly what you got wrong.
 
-> Craft N Code Karnataka 2026 · Theme: AI for Education · Team: **[team name]** · [member names]
+> Craft N Code Karnataka 2026 · Theme: AI for Education · Team: ThElites · SONIKA R CHANDRA, THEERTHA SUDEEP, GUNJAN G, VENKATA DEEKSHITHA MALLIPEDU
 >
-> **Live demo:** [deployed URL, or "run locally, see below"] · **Demo video:** [link] · **Slides:** [link]
+> **Live demo:**  https://vocalis-zmyc.onrender.com · **Demo video:** [link] · **Slides:**  https://docs.google.com/presentation/d/1Fyg-nEGZfU4sFotFvP_K6iWz4Cp6t6L4r_cweZaLT3A/edit?usp=sharing
 
 ## Problem and user
 
@@ -20,7 +20,6 @@ while practice testing and self-explanation work much better.
 The Feynman technique (explain it simply, find the gaps, go back to the source, simplify) uses exactly this, but it needs a listener who asks good questions,
 and most students study alone. Students also rarely get a clear list of *which* parts of their explanation were wrong.
 
-**Our evidence from students:** [poll result, e.g. "14 of 18 classmates re-read their notes and only 3 ever explain them aloud"]. See *Evidence that it works* below for what students did with Vocalis.
 
 **Benefit:** the student gets a patient listener at any hour, in their own notes' vocabulary, and leaves with a concrete list of gaps and a way to re-test them.
 It also works in the student's language: dictation in English, Hindi, Kannada, Tamil or Telugu, and revision notes translated into Kannada, Hindi, Tamil, Telugu or Malayalam.
@@ -56,8 +55,8 @@ It also works in the student's language: dictation in English, Hindi, Kannada, T
 
 - **Automated tests (no API key needed):** `python check_integration.py` runs the AI-logic tests (including a check that a whole session costs exactly 8 Gemini requests), the API tests, the full-loop test, the extraction tests on PDF, PowerPoint, Word, image and report files, and a browser-flow test. [add: "N tests, all passing"].
 - **Test files with known answers:** `test-material/pairs/` holds a correct and a deliberately wrong version of a PDF, a Word file, a PowerPoint and a flowchart image, with `ANSWER_KEY.md` listing every planted error, so you can check how the AI handles notes that contain mistakes.
-- **Pilot with students:** [N students, date, how they were recruited]. Results come from the app itself (`/stats`, also shown on the About page): [average score change between first and second attempt], [how many rated their confidence 15+ points above their real score], [average usefulness rating out of 5]. Be exact; say this is a small pilot, not a controlled study.
-- **Live run:** [screenshot of one real session on the hosted site].
+- **Pilot with students:** 11 students, 18th Ocotber, students from RV College of Engineering. Results come from the app itself 4,5/5.0 usefulness rating. Be exact; say this is a small pilot, not a controlled study.
+
 
 ## Data and AI used
 
