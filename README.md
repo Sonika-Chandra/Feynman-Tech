@@ -6,7 +6,7 @@ and you can feed the gap report back in to practise exactly what you got wrong.
 
 > Craft N Code Karnataka 2026 · Theme: AI for Education · Team: ThElites · SONIKA R CHANDRA, THEERTHA SUDEEP, GUNJAN G, VENKATA DEEKSHITHA MALLIPEDU
 >
-> **Live demo:**  https://vocalis-zmyc.onrender.com · **Demo video:** [link] · **Slides:**  https://docs.google.com/presentation/d/1Fyg-nEGZfU4sFotFvP_K6iWz4Cp6t6L4r_cweZaLT3A/edit?usp=sharing
+> **Live demo:**  https://vocalis-zmyc.onrender.com · **Demo video:** https://drive.google.com/file/d/1-JsOcun1gTHzh3WIbsiVMac2JQMaVpXN/view?usp=sharing · **Slides:**  https://docs.google.com/presentation/d/1Fyg-nEGZfU4sFotFvP_K6iWz4Cp6t6L4r_cweZaLT3A/edit?usp=sharing
 
 ## Problem and user
 
