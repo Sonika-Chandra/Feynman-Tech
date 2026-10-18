@@ -12,8 +12,8 @@ ATTRS = {
     "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "font-size",
     "font-family", "font-weight", "text-anchor", "dominant-baseline", "transform", "opacity", "fill-opacity", "stroke-opacity",
 }
-MAX_CHARS = 12000
-MAX_ELEMENTS = 300
+MAX_CHARS = 24000
+MAX_ELEMENTS = 600
 BAD_VALUE = re.compile(r"url\s*\(|javascript|data:|<|>|expression", re.I)
 
 

@@ -14,6 +14,7 @@ print("MODE:", "REAL Gemini (uses your quota)" if REAL else "FAKE AI (free)", "\
 os.environ["DATABASE_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import app as appmod  # noqa: E402
 from app import app  # noqa: E402
 
 NOTES = (
@@ -161,6 +162,29 @@ check("score mode skips the report", not pkg.get("report_markdown"))
 
 r = client.get(f"/session/{sid}/result")
 pkg = r.get_json() if r.status_code == 200 else {}
+r = client.get(f"/session/{sid}/progress")
+check("score response carries an integrity verdict and a badge", "integrity" in pkg and "badge" in pkg)
+check("feedback is saved (with tags)", client.post(f"/session/{sid}/feedback", json={"useful": 4, "confidence_after": 7, "comment": "good", "tags": ["Diagram helped", "Too slow"]}).status_code == 200)
+check("feedback summary counts the tags", dict(_raw.get("/feedback/summary").get_json()["tags"]).get("Diagram helped") == 1)
+_csv = _raw.get("/feedback/export.csv")
+check("feedback CSV downloads locally with the tags and comment", _csv.status_code == 200 and b"Diagram helped" in _csv.data and b"good" in _csv.data)
+check("revision notes Word file downloads", client.get(f"/session/{sid}/export?kind=notes").status_code in (200, 404))
+check("bad feedback is rejected", client.post(f"/session/{sid}/feedback", json={"useful": "abc"}).status_code == 400 and client.post(f"/session/{sid}/feedback", json={}).status_code == 400)
+check("a rating alone is enough (confidence_after is optional)", client.post(f"/session/{sid}/feedback", json={"useful": 5, "recommend": "yes"}).status_code == 200)
+_ins = _raw.get("/insights").get_json()
+check("insights are public and have the chart data", _raw.get("/insights").status_code == 200 and len(_ins["score_histogram"]) == 10 and len(_ins["usefulness_counts"]) == 5 and _ins["recommend"]["yes"] == 1 and _ins["ratings"] == 1, str(_ins)[:300])
+_in3 = _raw.get("/insights?hours=3").get_json()
+check("window: the last 3 hours includes a session that just happened", _in3["sessions"] >= 1 and _in3["bucket"] == "hour" and _in3["window"]["since"], str(_in3)[:200])
+check("window: a window in the future is empty", _raw.get("/insights?since=2999-01-01T00:00:00Z").get_json()["sessions"] == 0)
+check("window: a window that ended long ago is empty", _raw.get("/insights?until=2000-01-01T00:00:00Z").get_json()["sessions"] == 0)
+check("window: since and until together (an exact range) contain it", _raw.get("/insights?since=2000-01-01T00:00:00Z&until=2999-01-01T00:00:00Z").get_json()["sessions"] >= 1)
+check("window: a bad date is ignored, not an error", _raw.get("/insights?since=not-a-date").status_code == 200)
+check("window: the CSV can be limited too", b"session_id" in _raw.get("/feedback/export.csv?hours=3").data and b"Diagram helped" not in _raw.get("/feedback/export.csv?since=2999-01-01T00:00:00Z").data)
+check("insights carry no names or emails", "@" not in str(_ins) and "Asha" not in str(_ins))
+check("CSV has the would_recommend column", b"would_recommend" in _raw.get("/feedback/export.csv").data)
+check("stats are public and anonymous", _raw.get("/stats").status_code == 200 and "average_usefulness" in _raw.get("/stats").get_json())
+check("profile endpoint works", client.get("/profile").status_code == 200)
+check("progress endpoint lists the scored attempt", r.status_code == 200 and len(r.get_json()["attempts"]) >= 1 and "overall" in r.get_json()["attempts"][0])
 check("full result has the gap report", r.status_code == 200 and bool(pkg.get("report_markdown")), r.get_data(as_text=True)[:300])
 
 r = client.get(f"/session/{sid}/report")
@@ -172,6 +196,35 @@ check("report download header", "attachment" in r.headers.get("Content-Dispositi
 r = client.get("/sessions")
 hist = r.get_json()["sessions"] if r.status_code == 200 else []
 check("history lists the session with its score", len(hist) == 1 and hist[0]["overall"] is not None, str(hist))
+
+# ---- the student ends the session while the AI is still writing the next question
+if not REAL:
+    _up = client.post("/upload", data={"file": (io.BytesIO(NOTES.encode()), "n.txt")}, content_type="multipart/form-data").get_json()
+    _s = client.post("/session/start", json={"upload_id": _up["upload_id"]}).get_json()["session_id"]
+    _orig = appmod.ai.next_question
+    def _slow(*a, **kw):
+        client.post(f"/session/{_s}/finish")          # the student pressed "end session" while this request was running
+        return _orig(*a, **kw)
+    appmod.ai.next_question = _slow
+    try:
+        _r = client.post("/session/answer", json={"session_id": _s, "text": "Plants make food from light."})
+    finally:
+        appmod.ai.next_question = _orig
+    _msgs = client.get(f"/session/{_s}").get_json()["messages"]
+    check("ended while the question was being written: the answer is still counted", _r.status_code == 200 and sum(1 for m in _msgs if m["role"] == "student") == 1, str(_msgs))
+    check("...and the late question is dropped, the session stays finished", _r.get_json()["should_stop"] is True and _msgs[-1]["role"] == "student")
+    check("...so the report can be made from what was answered", client.get(f"/session/{_s}/result?mode=score").status_code == 200)
+
+    def _boom(*a, **kw): raise RuntimeError("429 RESOURCE_EXHAUSTED quota")
+    _s2 = client.post("/session/start", json={"upload_id": _up["upload_id"]}).get_json()["session_id"]
+    appmod.ai.next_question = _boom
+    try:
+        _r2 = client.post("/session/answer", json={"session_id": _s2, "text": "first try"})
+    finally:
+        appmod.ai.next_question = _orig
+    _n = lambda: sum(1 for m in client.get(f"/session/{_s2}").get_json()["messages"] if m["role"] == "student")
+    check("AI failure: the answer is not left half saved", _r2.status_code != 200 and _n() == 0)
+    check("...so sending it again does not duplicate it", client.post("/session/answer", json={"session_id": _s2, "text": "first try"}).status_code == 200 and _n() == 1)
 r = _raw.get("/sessions", headers=OTHER)
 check("other user's history is empty", r.get_json()["sessions"] == [])
 
@@ -187,7 +240,7 @@ r = client.get(f"/session/{sid}/export?kind=full")
 check("full report .docx downloads", r.status_code == 200 and r.data[:2] == b"PK")
 fd = _docx.Document(io.BytesIO(r.data))
 ftext = "\n".join(p.text for p in fd.paragraphs)
-check("full docx has conversation, scores and notes", all(x in ftext for x in ("The conversation", "Question 1:", "Revision notes", "Fact-check")) and len(fd.tables) >= 2, ftext[:300])
+check("full docx has conversation, scores and notes", all(x in ftext for x in ("The conversation", "Question 1:", "Revision notes")) and len(fd.tables) >= 2, ftext[:300])
 r = client.get(f"/session/{sid}/export?kind=nope")
 check("export rejects unknown kind", r.status_code == 400)
 r = client.post("/upload", data={"file": (io.BytesIO(gap_bytes), "gap-report.docx")}, content_type="multipart/form-data")
@@ -233,6 +286,27 @@ r = client.post("/tts", json={"text": "Hello"}, headers=HDR) if "HDR" in globals
 check("/tts in demo mode -> clean 503 JSON (browser voice takes over)", r.status_code == 503 and "error" in r.get_json())
 r = client.post("/tts", json={})
 check("/tts rejects empty text / no login", r.status_code in (400, 401))
+
+# no anonymous accounts; daily cap applies to the server's own key only
+check("there is no guest login", _raw.post("/auth/guest").status_code in (404, 405))
+r = _raw.post("/auth/register", json={"name": "Capped", "email": "capped@example.com", "password": "secret1"})
+guest_hdr = {"Authorization": "Bearer " + r.get_json()["token"]}
+check("second account token is valid", _raw.get("/auth/me", headers=guest_hdr).status_code == 200)
+appmod.DAILY_AI_LIMIT = 2
+_raw.post("/upload", data={"file": (io.BytesIO(NOTES.encode()), "n.md")}, content_type="multipart/form-data", headers=guest_hdr)
+up = _raw.post("/upload", data={"file": (io.BytesIO(NOTES.encode()), "n.md")}, content_type="multipart/form-data", headers=guest_hdr).get_json()
+codes = [_raw.post("/session/start", json={"upload_id": up["upload_id"]}, headers=guest_hdr).status_code for _ in range(3)]
+check("daily AI cap: 2 allowed, then a friendly 429", codes == [201, 201, 429], str(codes))
+check("cap message is explained", "limit" in _raw.post("/session/start", json={"upload_id": up["upload_id"]}, headers=guest_hdr).get_json()["error"].lower())
+own_hdr = {**guest_hdr, "X-Gemini-Key": "A" * 39}
+check("a visitor's own key is not capped by the server's daily limit", [_raw.post("/session/start", json={"upload_id": up["upload_id"]}, headers=own_hdr).status_code for _ in range(3)] == [201, 201, 201])
+h_own = _raw.get("/health", headers={"X-Gemini-Key": "A" * 39}).get_json()
+check("/health shows that their own key is in use, with their own request count", h_own["using_own_key"] is True and "requests" in h_own)
+check("a malformed key is ignored", _raw.get("/health", headers={"X-Gemini-Key": "bad key!"}).get_json()["using_own_key"] is False)
+check("/key/check works", _raw.post("/key/check", headers=own_hdr).status_code == 200)
+appmod.DAILY_AI_LIMIT = 0
+h = _raw.get("/health").get_json()
+check("/health reports public flag", "public" in h)
 
 r = client.get("/")
 check("home page is served", r.status_code == 200 and (b"Vocalis" in r.data or b"frontend" in r.data))

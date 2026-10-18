@@ -68,7 +68,7 @@ Returns `201 {upload_id, filename, topics:[...], sections:[{title, preview}], ch
 `GET /session/<id>/result?mode=score|full&lang=Kannada`
 
 - `mode=score`: one AI call. `{score:{scores:{accuracy,completeness,consistency,clarity:{score,justification}}, overall, mistakes, summary}}`.
-- `mode=full` (default): adds `fact_check`, `report_markdown` and `notes`. If the AI cannot write the report, `report_markdown` is null and `report_error` says why (an error message is never stored as the report). It reuses a score that already exists, so the screen can show the score first and the gap report a moment later. The fact-check and notes never crash the call; on failure they carry an `error` string.
+- `mode=full` (default): adds `report_markdown` and `notes`. If the AI cannot write the report, `report_markdown` is null and `report_error` says why (an error message is never stored as the report). It reuses a score that already exists, so the screen can show the score first and the gap report a moment later. The notes never crash the call; on failure they carry an `error` string.
 
 Results are cached per session.
 
@@ -77,15 +77,14 @@ Upload that file again with `POST /upload` to be tested on exactly those gaps.
 
 ## Other
 
-`GET /health` returns `{status, fake_ai}`. `GET /` serves the web app from `frontend/`.
-Set `USE_FAKE_AI=1` to run everything without Gemini.
+`GET /health` returns `{status, model, requests, ...}`. `GET /` serves the web app from `frontend/`.
 
 
 ## POST /tts  (login required)
 Body `{"text": "...", "voice": "Aoede"}` -> `audio/wav` (Gemini text-to-speech, one request on `GEMINI_TTS_MODEL`).
-In demo mode or when the quota is used up it returns 503 `{"error": ...}` and the page falls back to the device voice.
+When the quota is used up it returns 503 `{"error": ...}` and the page says so and lets the student read the question on screen. There is no other voice.
 
 ## GET /session/<id>/export?kind=gaps|full  (login required)
 Word document download (`.docx`). `gaps` = detailed gap report (can be uploaded again to practise the gaps),
-`full` = whole session report (scores explained, gaps, question-by-question feedback, conversation with drawings, fact-check, notes).
+`full` = whole session report (scores explained, gaps, question-by-question feedback, conversation with drawings, notes).
 The result must exist first (open the report once). The result JSON now also contains `gaps`, `strengths`, `study_plan`, `question_feedback`.

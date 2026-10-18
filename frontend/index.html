@@ -10,16 +10,24 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="app" style="border:none;">
+<div id="app">
 
-  <header class="topbar" id="topbar" hidden >
-    <a class="brand" href="#" id="brandLink"><span class="brand-mark">V</span><span>Vocalis</span></a><em></em><em></em>
-    <nav class="topnav" aria-label="Main" style="border:none;" >
-      <button class="nav-link" data-nav="home">Home</button><em></em>
+  <header class="topbar" id="topbar" hidden>
+    <a class="brand" href="#" id="brandLink"><span class="brand-mark">V</span><span>Vocalis</span></a>
+    <nav class="topnav" aria-label="Main">
+      <button class="nav-link" data-nav="home">Home</button>
+      <button class="nav-link" data-nav="impact">Impact</button>
       <button class="nav-link" data-nav="about">About</button>
     </nav>
     <div class="topbar-right" id="topbarRight">
-      <div class="user-box" title="Signed in"><span class="avatar" id="userAvatar">?</span><span class="user-name" id="userChip"></span></div>
+      <button class="btn ghost small" id="keyBtn" title="Use your own Gemini API key">🔑 API key</button>
+      <div class="profile-menu" id="profileMenu">
+        <button class="user-box" id="userBtn" aria-haspopup="true" aria-expanded="false" title="Your profile and badges"><span class="avatar" id="userAvatar">?</span><span class="user-name" id="userChip"></span><span class="caret">▾</span></button>
+        <div class="profile-pop" id="profilePop" hidden>
+          <h4>Your badges</h4>
+          <div id="profileBox" class="profile-box"></div>
+        </div>
+      </div>
       <button class="btn ghost small" id="logoutBtn">Log out</button>
     </div>
   </header>
@@ -37,7 +45,10 @@
           <li><b>Whiteboard</b> for diagrams, graphs and maths</li>
           <li><b>A gap report</b> you can save and test again</li>
         </ul>
-        <button type="button" class="link-btn" id="aboutFromAuth">What is the Feynman technique? About Vocalis →</button>
+        <div class="hero-links">
+          <button type="button" class="btn ghost" id="aboutFromAuth">About Vocalis →</button>
+          <button type="button" class="btn ghost" id="impactFromAuth">See the impact →</button>
+        </div>
       </aside>
       <div class="auth-card">
         <div class="seg" role="tablist">
@@ -87,7 +98,7 @@
           <label class="field lang-field">
             <span>Revision notes language</span>
             <select id="langSelect">
-              <option >Kannada</option><option>Hindi</option><option>Tamil</option><option>Telugu</option><option>Malayalam</option><option>English</option>
+              <option>Kannada</option><option>Hindi</option><option>Tamil</option><option>Telugu</option><option>Malayalam</option><option>English</option>
             </select>
           </label>
         </div>
@@ -97,6 +108,35 @@
           </div>
           <div id="historyList" class="history"></div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ IMPACT ============================ -->
+  <section class="screen" id="screen-impact" hidden>
+    <div class="wrap impact">
+      <button class="link-btn" id="impactBack">← Back</button>
+      <p class="eyebrow">Impact</p>
+      <h1>What students found</h1>
+      <p class="lead muted">Live numbers from everyone who has used Vocalis on this site. Nothing here shows a name, an email, an answer or a comment. Sessions flagged as not independent work are left out of the charts.</p>
+      <div class="card impact-filter" id="impactFilter">
+        <h3>Time window</h3>
+        <p class="muted small">Add up only what happened in a period, for example one pilot session. Times are in your own time zone.</p>
+        <div class="win-chips" id="winChips" role="group" aria-label="Time window">
+          <button type="button" class="chip-btn" data-h="1">Last hour</button>
+          <button type="button" class="chip-btn" data-h="3">Last 3 hours</button>
+          <button type="button" class="chip-btn" data-h="24">Last 24 hours</button>
+          <button type="button" class="chip-btn active" data-h="0">All time</button>
+        </div>
+        <div class="win-custom"><label>From <input type="datetime-local" id="winFrom"></label><label>To <input type="datetime-local" id="winTo"></label><button type="button" class="btn ghost small" id="winApply">Apply range</button></div>
+        <p class="small" id="winLabel"><b>Showing:</b> all time</p>
+      </div>
+      <div id="impactBody"><p class="muted">Loading…</p></div>
+      <div class="card impact-export">
+        <h3>Get the data</h3>
+        <p class="muted small">The chart numbers are open as JSON. The full feedback table (one row per session, with comments) is for the team only: paste the team key to download it as a spreadsheet.</p>
+        <div class="export-row"><a class="btn ghost small" href="/insights" target="_blank" rel="noopener">Chart data (JSON)</a>
+          <input id="fbKey" type="password" autocomplete="off" placeholder="Team key" aria-label="Team key"><button class="btn primary small" id="fbCsv">Download feedback (CSV)</button></div>
       </div>
     </div>
   </section>
@@ -129,10 +169,11 @@
         <li>The AI opens the conversation and asks exactly five questions, each one following your last answer.</li>
         <li>Answer by typing, speaking, or drawing and labelling on the whiteboard, including diagrams the AI draws for you to label.</li>
         <li>Optional time limit per question and optional read-aloud keep it feeling like a real viva.</li></ul></div></div>
-      <div class="map-row"><div class="l">3 · Find the gaps<small>Scores, gaps and fact-check</small></div><div><ul>
+      <div class="card" id="evidenceCard" hidden><h3>What students found</h3><div id="evidence" class="muted"></div></div>
+      <div class="map-row"><div class="l">3 · Find the gaps<small>Scores and gaps</small></div><div><ul>
         <li>An examiner AI scores accuracy, completeness, consistency and clarity (each out of 10) using only your own notes, then gives an overall score out of 100.</li>
         <li>Every wrong or missing idea becomes a gap with what you said, the correct explanation, why it matters and a question to test yourself.</li>
-        <li>A web-search fact-check flags anything in your notes or your answers that may be wrong.</li></ul></div></div>
+        <li>A confidence check before the test and a short feedback form after it show how well you judge your own understanding.</li></ul></div></div>
       <div class="map-row"><div class="l">4 · Review and simplify<small>Notes, reports and re-testing</small></div><div><ul>
         <li>Revision notes focus only on the parts you struggled with, and can be translated into Kannada, Hindi, Tamil, Telugu or Malayalam.</li>
         <li>Download a detailed gap report and a full session report as Word documents.</li>
@@ -149,7 +190,7 @@
       </div>
 
       <h2>Built with</h2>
-      <p>Flask and SQLite on the back end, Google Gemini for the questions, scoring, drawing understanding, fact-check and translation, and the browser's own speech tools for live voice. Made for Craft N Code Karnataka 2026 · AI for Education.</p>
+      <p>Flask and SQLite on the back end, Google Gemini for the questions, scoring, drawing understanding and translation, and the browser's own speech tools for live voice. Made for Craft N Code Karnataka 2026 · AI for Education.</p>
       <p><button class="btn primary" id="aboutStart">Start a session</button></p>
     </div>
   </section>
@@ -175,31 +216,35 @@
         </div>
         <div class="setting">
           <span class="setting-label">Speech language</span>
-          <select id="speechLang" aria-label="Speech language"  >
-            <option value="en-IN" >English (India)</option>
-            <option value="en-US" >English (US)</option>
-            <option value="en-GB" >English (UK)</option>
-            <option value="hi-IN" >Hindi</option>
-            <option value="kn-IN" >Kannada</option>
-            <option value="ta-IN" >Tamil</option>
-            <option value="te-IN" >Telugu</option>
+          <select id="speechLang" aria-label="Speech language">
+            <option value="en-IN">English (India)</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="hi-IN">Hindi</option>
+            <option value="kn-IN">Kannada</option>
+            <option value="ta-IN">Tamil</option>
+            <option value="te-IN">Telugu</option>
           </select>
         </div>
         <label class="check"><input type="checkbox" id="optAccurate"><span><b>Accurate voice mode</b> Gemini listens to your recording again for a more exact transcript (uses one extra AI request per spoken answer).</span></label>
         <label class="check"><input type="checkbox" id="optSpeak"><span><b>Read each question aloud</b> Optional. The orb pulses while the question is spoken.</span></label>
         <div class="setting" id="voiceBox">
           <span class="setting-label">Voice</span>
-          <select id="voiceEngine" aria-label="Voice type">
-            <option value="ai" class= "dropdown">AI voice (natural, uses 1 AI request per question)</option>
-            <option value="browser" class= "dropdown">Device voice (free, instant)</option>
-          </select>
-          <select id="voiceName" aria-label="Voice"></select>
+          <span class="voice-fixed"><b>Aoede</b> · natural AI voice (uses 1 AI request per question)</span>
           <button type="button" class="btn ghost" id="voicePreview">Preview</button>
         </div>
       </div>
-      <div class="topic-grid" id="topicGrid"></div>
-      <div class="topics-foot">
-        <button class="btn ghost" id="wholeDocBtn">Test me on the whole document</button>
+      <div class="topic-pick">
+        <label for="topicSelect">Choose what to be tested on</label>
+        <select id="topicSelect"></select>
+        <div class="conf-card" id="confCard">
+          <h3>Before you start: how well do you think you know this topic?</h3>
+          <div class="conf-main"><span class="conf-face" id="confFace">😐</span><div class="conf-num"><b id="confVal">5</b><span>/ 10</span></div></div>
+          <input type="range" id="confSlider" class="big-range" min="0" max="10" value="5" aria-label="Confidence before the test">
+          <div class="conf-scale"><span>Not at all</span><span>Somewhat</span><span>Very well</span></div>
+          <p class="conf-text" id="confText"></p>
+        </div>
+        <button class="btn primary" id="topicStart">Start the test</button>
       </div>
       <p class="form-error" id="startError" role="alert"></p>
     </div>
@@ -224,11 +269,13 @@
         <div class="thread" id="thread" aria-live="polite"></div>
 
         <div class="composer" id="composer">
+          <div class="read-status" id="readStatus" hidden role="status"><span id="readText">🔊 Reading the question aloud. You can start answering now.</span><button type="button" class="btn ghost small" id="readSkip">Skip reading</button></div>
           <div class="attach-row" id="attachRow" hidden></div>
           <div class="composer-box">
             <textarea id="answerBox" rows="1" placeholder="Type your explanation, or tap the microphone and speak…"></textarea>
             <div class="composer-actions">
               <button class="icon-btn" id="wbToggle" title="Open whiteboard" aria-pressed="false">✎<span>Whiteboard</span></button>
+              <button class="icon-btn" id="calcToggle" title="Scientific calculator" aria-pressed="false">∑<span>Calculator</span></button>
               <button class="icon-btn" id="micBtn" title="Speak your answer" aria-pressed="false">🎙<span>Speak</span></button>
               <button class="btn primary" id="sendBtn">Send</button>
             </div>
@@ -278,23 +325,98 @@
     </div>
   </section>
 
+
+  <div class="calc" id="calcPanel" hidden role="dialog" aria-label="Scientific calculator">
+    <div class="calc-head"><strong>Calculator</strong><button class="tool" id="calcMode" title="Degrees or radians">DEG</button><button class="icon-btn small" id="calcClose" title="Close">✕</button></div>
+    <input id="calcInput" autocomplete="off" spellcheck="false" placeholder="Type or tap, e.g. 2*sin(30)+sqrt(16)" aria-label="Expression">
+    <div class="calc-res" id="calcResult" aria-live="polite"></div>
+    <div class="calc-keys">
+      <button data-k="sin(">sin</button>
+      <button data-k="cos(">cos</button>
+      <button data-k="tan(">tan</button>
+      <button data-k="ln(">ln</button>
+      <button data-k="log(">log</button>
+      <button data-k="asin(">sin⁻¹</button>
+      <button data-k="acos(">cos⁻¹</button>
+      <button data-k="atan(">tan⁻¹</button>
+      <button data-k="sqrt(">√</button>
+      <button data-k="^">xʸ</button>
+      <button data-k="(">(</button>
+      <button data-k=")">)</button>
+      <button data-k="pi">π</button>
+      <button data-k="e">e</button>
+      <button data-k="!">n!</button>
+      <button data-k="7">7</button>
+      <button data-k="8">8</button>
+      <button data-k="9">9</button>
+      <button data-k="/">÷</button>
+      <button data-k="%">%</button>
+      <button data-k="4">4</button>
+      <button data-k="5">5</button>
+      <button data-k="6">6</button>
+      <button data-k="*">×</button>
+      <button data-k="ans">Ans</button>
+      <button data-k="1">1</button>
+      <button data-k="2">2</button>
+      <button data-k="3">3</button>
+      <button data-k="-">−</button>
+      <button data-k="exp(">eˣ</button>
+      <button data-k="0">0</button>
+      <button data-k=".">.</button>
+      <button data-k="^2">x²</button>
+      <button data-k="+">+</button>
+      <button data-k="abs(">|x|</button>
+    </div>
+    <div class="calc-row"><button class="btn ghost small" id="calcBack">⌫</button><button class="btn ghost small" id="calcClear">Clear</button><button class="btn primary small" id="calcEq">=</button><button class="btn ghost small" id="calcUse" title="Add the result to your answer">Use in answer</button></div>
+    <div class="calc-hist" id="calcHist"></div>
+  </div>
+
+
+  <div class="modal" id="keyModal" hidden role="dialog" aria-modal="true" aria-labelledby="keyTitle">
+    <div class="modal-card">
+      <button class="icon-btn small modal-x" id="keyClose" aria-label="Close">✕</button>
+      <h3 id="keyTitle">Use your own Gemini API key</h3>
+      <p class="muted" id="keyWhy">Vocalis uses Google's Gemini AI. A free key gives you your own daily allowance, so you are not sharing one with everyone else.</p>
+      <ol class="key-steps">
+        <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and sign in with a Google account.</li>
+        <li>Click <b>Create API key</b> and copy it.</li>
+        <li>Paste it below and press <b>Save and test</b>.</li>
+      </ol>
+      <label for="keyInput">Your Gemini API key</label>
+      <div class="key-row"><input id="keyInput" type="password" autocomplete="off" spellcheck="false" placeholder="AIza..."><button class="btn ghost small" id="keyShow" type="button">Show</button></div>
+      <p class="key-msg" id="keyMsg" role="status"></p>
+      <div class="key-usage" id="keyUsage" hidden></div>
+      <div class="key-actions"><button class="btn primary" id="keySave">Save and test</button><button class="btn ghost" id="keyRemove">Remove my key</button></div>
+      <p class="muted small">Your key stays in this browser and is sent over the connection only to make your own requests. The server does not save it. Free keys allow roughly 20 requests per model per day, and one full session uses about 7. You can see your count in the top bar.</p>
+    </div>
+  </div>
+
+  <div class="modal" id="aiModal" hidden role="alertdialog" aria-modal="true" aria-labelledby="aiTitle">
+    <div class="modal-card ai-card">
+      <div class="ai-icon" id="aiIcon">⏳</div>
+      <h3 id="aiTitle">Something went wrong</h3>
+      <p id="aiText" class="muted"></p>
+      <div class="key-actions"><button class="btn primary" id="aiKey" hidden>Add or change my key</button><button class="btn ghost" id="aiClose">Close</button></div>
+    </div>
+  </div>
+
   <!-- ============================ REPORT ============================ -->
   <section class="screen" id="screen-report" hidden>
     <div class="wrap report">
       <div class="report-head">
         <div>
           <p class="eyebrow" id="reportTopic"></p>
-          <h2>Your results</h2>
+          <h2>Your results <span class="badge-chip" id="reportBadge" hidden></span></h2>
         </div>
         <div class="report-actions">
           <button class="btn ghost" id="downloadBtn" disabled>Gap report (Word)</button>
-          <button class="btn ghost" id="fullDocBtn" disabled>Full report (Word)</button>
-          <button class="btn ghost" id="mdBtn" disabled title="Plain text version of the gap report">Gap report (.md)</button>
+          <button class="btn ghost" id="fullDocBtn" disabled>Revision notes (Word)</button>
           <button class="btn primary" id="retestBtn" disabled>Test me on my gaps</button>
         </div>
       </div>
 
       <div class="report-status" id="reportStatus" hidden></div>
+      <div class="integrity-banner" id="integrityBanner" hidden></div>
 
       <div class="loading-card" id="reportLoading">
         <div class="spinner"></div>
@@ -316,14 +438,32 @@
 
         <div class="tab-cards" role="tablist">
           <button class="tab-card active" data-tab="gaps" role="tab"><span class="tc-icon">⚑</span><span class="tc-text"><b>Gaps to review</b><small id="tcGaps">Preparing…</small></span></button>
-          <button class="tab-card" data-tab="fact" role="tab"><span class="tc-icon">✓</span><span class="tc-text"><b>Fact-check</b><small id="tcFact">Preparing…</small></span></button>
           <button class="tab-card" data-tab="notes" role="tab"><span class="tc-icon">✎</span><span class="tc-text"><b>Revision notes</b><small id="tcNotes">Preparing…</small></span></button>
           <button class="tab-card" data-tab="transcript" role="tab"><span class="tc-icon">☰</span><span class="tc-text"><b>Conversation</b><small id="tcConv">…</small></span></button>
         </div>
+        <div class="progress-card" id="progressCard" hidden></div>
         <div class="tab-panel" id="tab-gaps"></div>
-        <div class="tab-panel" id="tab-fact" hidden></div>
         <div class="tab-panel" id="tab-notes" hidden></div>
         <div class="tab-panel" id="tab-transcript" hidden></div>
+
+        <div class="feedback-card" id="feedbackCard">
+          <h3>How did it go? <span class="req-tag" id="reqTag">Required · one tap</span></h3>
+          <p class="muted small" id="fbNeed">Tap a star to rate this session. That is all we need before you move on. The rest is optional.</p>
+          <div class="calib-bars" id="calibBars"></div>
+          <p class="calib-text" id="calibration"></p>
+          <div class="fb-block"><h4>How useful was this session?</h4>
+            <div class="stars" id="stars" role="radiogroup" aria-label="Usefulness"></div><p class="star-label" id="starLabel">Tap a star</p></div>
+          <div class="fb-block"><h4>Would you recommend Vocalis to a classmate?</h4>
+            <div class="rec-row" id="recRow" role="radiogroup" aria-label="Would you recommend it"><button type="button" class="rec" data-v="yes">👍 Yes</button><button type="button" class="rec" data-v="maybe">🤔 Maybe</button><button type="button" class="rec" data-v="no">👎 No</button></div></div>
+          <div class="fb-block"><h4>How confident do you feel about this topic now? <span class="muted small">(optional)</span></h4>
+            <div class="conf-main"><span class="conf-face" id="afterFace">😐</span><div class="conf-num"><b id="confAfterVal">5</b><span>/ 10</span></div></div>
+            <input type="range" id="confAfter" class="big-range" min="0" max="10" value="5" aria-label="Confidence after the test">
+            <div class="conf-scale"><span>Not at all</span><span>Somewhat</span><span>Very well</span></div></div>
+          <div class="fb-block"><h4>What stood out? Tap any that apply</h4><div class="fb-tags" id="fbTags"></div></div>
+          <textarea id="fbComment" rows="3" maxlength="500" placeholder="Anything confusing, missing or great? (optional)"></textarea>
+          <button class="btn primary big" id="fbSend">Send feedback</button>
+          <p class="muted small" id="fbDone" hidden>Thank you. Your feedback is saved. You can change it and send again.</p>
+        </div>
 
         <div class="report-foot">
           <button class="btn ghost" id="retrySame">Try this topic again</button>
@@ -342,6 +482,7 @@
 <script src="js/wav.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/whiteboard.js"></script>
+<script src="js/calc.js"></script>
 <script src="js/orb.js"></script>
 <script src="js/app.js"></script>
 </body>

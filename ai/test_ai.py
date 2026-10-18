@@ -4,7 +4,7 @@ Test harness for the AI module. Run from inside the ai/ folder:
     python test_ai.py question              # Milestone 2: one question per topic
     python test_ai.py loop [topic or notes.txt]   # Milestone 3: interactive 5-round loop (uses input(), test only)
     python test_ai.py score [topic]         # Milestone 4: stability + wrong-answer check
-    python test_ai.py package [topic]       # Milestones 6-7: full report, fact-check, notes
+    python test_ai.py package [topic]       # Milestones 6-7: full report and notes
 Topics: photosynthesis, supply_demand, public_key
 
 Free-tier keys allow only a few requests per minute. If you see 429 errors, set TEST_PAUSE=15.
@@ -192,8 +192,6 @@ def cmd_package(topic_arg):
     transcript = make_transcript(name, "wrong")
     pkg = ai.full_package(t["source"], transcript, language="Kannada")
     print("\nSCORE"); print_score(pkg["score"])
-    print("\nFACT-CHECK FINDINGS\n" + pkg["fact_check"]["findings"])
-    print("SOURCES:", pkg["fact_check"]["sources"])
     print("\nREPORT\n" + pkg["report_markdown"])
     print("\nNOTES (English)\n" + pkg["notes"]["notes"])
     print("\nNOTES (translated)\n" + pkg["notes"]["notes_translated"])

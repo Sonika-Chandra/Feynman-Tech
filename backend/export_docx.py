@@ -1,7 +1,7 @@
 """
 Word (.docx) versions of the results, built with python-docx:
   build_gap_report(...)   the gaps to review, in detail (can be uploaded again to practise them)
-  build_full_report(...)  the whole session: scores explained, gaps, question-by-question feedback, conversation, fact-check, notes
+  build_full_report(...)  the whole session: scores explained, gaps, question-by-question feedback, conversation, notes
 """
 import io
 import os
@@ -226,18 +226,28 @@ def build_gap_report(session, user, result):
     doc.add_heading(f"Gaps to review ({len(gaps)})", level=1)
     _gap_blocks(doc, gaps)
 
-    fc = (result.get("fact_check") or {}).get("findings", "")
-    if fc and not fc.startswith("No suspected errors"):
-        doc.add_heading("Suspected issues in your study material", level=1)
-        doc.add_paragraph("These points were flagged using a web search. They are suspected, not certain, so check them against a trusted source.")
-        _markdown(doc, fc)
-
     if result.get("study_plan"):
         doc.add_heading("Your study plan", level=1)
         _bullets(doc, result["study_plan"], "List Number")
 
     doc.add_heading("Practise these gaps again", level=1)
     doc.add_paragraph("Open Vocalis, choose Upload, and select this file. Each gap becomes a topic, so the next session tests exactly what you got wrong.")
+    return _to_bytes(doc)
+
+
+def build_notes_report(session, user, result):
+    """Revision notes only (plus the translation), as their own Word file."""
+    doc = _new_doc()
+    notes = result.get("notes") or {}
+    _front(doc, "Vocalis Revision Notes", "Short notes built from your topic and your gaps", _meta(session, user, result))
+    doc.add_heading("Revision notes", level=1)
+    if notes.get("notes"):
+        _markdown(doc, notes["notes"])
+    else:
+        doc.add_paragraph("No revision notes were produced for this session.")
+    if notes.get("notes_translated") and notes.get("language", "English") != "English":
+        doc.add_heading(f"Notes in {notes['language']}", level=1)
+        _markdown(doc, notes["notes_translated"])
     return _to_bytes(doc)
 
 
@@ -307,25 +317,8 @@ def build_full_report(session, user, result, messages, drawing_path=lambda m: No
                 rr = q.add_run("Whiteboard:  "); rr.bold = True; rr.font.color.rgb = GREY
                 q.add_run(drawing.strip()).italic = True
 
-    fc = result.get("fact_check") or {}
-    doc.add_heading("7. Fact-check", level=1)
-    if fc.get("error"):
-        doc.add_paragraph(f"The fact-check could not run this time ({fc['error']}).")
-    elif fc.get("findings"):
-        if fc["findings"].startswith("No suspected errors"):
-            doc.add_paragraph("No suspected factual errors were found in your notes or in what you said.")
-        else:
-            doc.add_paragraph("Suspected issues found with a web search. Treat them as prompts to double-check, not as certain errors.")
-            _markdown(doc, fc["findings"])
-        if fc.get("sources"):
-            doc.add_heading("Sources", level=3)
-            for s in fc["sources"]:
-                doc.add_paragraph(f"{s.get('title') or s.get('url')} — {s.get('url')}", style="List Bullet")
-    else:
-        doc.add_paragraph("No fact-check was produced for this session.")
-
     notes = result.get("notes") or {}
-    doc.add_heading("8. Revision notes", level=1)
+    doc.add_heading("7. Revision notes", level=1)
     if notes.get("notes"):
         _markdown(doc, notes["notes"])
         if notes.get("notes_translated") and notes.get("language", "English") != "English":
@@ -335,7 +328,7 @@ def build_full_report(session, user, result, messages, drawing_path=lambda m: No
         doc.add_paragraph("No revision notes were produced for this session.")
 
     if result.get("study_plan"):
-        doc.add_heading("9. Your study plan", level=1)
+        doc.add_heading("8. Your study plan", level=1)
         _bullets(doc, result["study_plan"], "List Number")
     return _to_bytes(doc)
 

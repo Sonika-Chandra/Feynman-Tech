@@ -6,7 +6,6 @@ The backend (P3) imports these functions:
     next_question(source_text, conversation_history, new_user_reply) -> dict
     describe_drawing(question, image_bytes, mime_type)                -> str    (reads a whiteboard drawing)
     final_score(source_text, transcript)                              -> dict
-    fact_check(source_text, transcript=None)                          -> dict
     mistake_report(source_text, transcript, score, fact_check_text="") -> str (Markdown)
     notes_bundle(source_text, transcript, language="Kannada")         -> dict
     full_package(source_text, transcript, language="Kannada")         -> dict
@@ -89,26 +88,98 @@ class MistakeList(BaseModel):
     strengths: list[str]
     study_plan: list[str]
     question_feedback: list[QuestionFeedback]
+    revision_notes: str              # Markdown study notes in English (see the prompt)
+    revision_notes_translated: str   # the same notes in the requested language ("" or identical when English)
 
 
 # ------------------------------------------------------------------ helpers
-_client = None
+_client = None         # a forced client (tests replace it with a stub); normally clients are created per key below
+_requests = 0          # successful Gemini requests since the server started (shown in the app so you can plan your quota)
+
+# ---- a visitor can bring their own key: it is held for the duration of one request only (never written to disk or logs)
+import contextvars   # noqa: E402
+import hashlib       # noqa: E402
+
+_user_key = contextvars.ContextVar("vocalis_user_key", default="")
+_clients = {}          # key -> genai.Client (kept in memory so each request does not rebuild it)
+_counts = {}           # key fingerprint -> successful requests made with that key
+_active_by = {}        # key fingerprint -> index of the model in use for that key
+
+
+def use_key(key):
+    """Use this Gemini key for the current request ("" = the server's own key)."""
+    _user_key.set((key or "").strip())
+
+
+_PLACEHOLDERS = ("your_key", "your-key", "paste", "changeme", "xxxx", "insert", "<", "none", "null")
+
+
+def server_key():
+    """The key set by the site owner in .env or the host, or "" when there is none (a copied placeholder such as your_key_here counts as none)."""
+    if os.getenv("REQUIRE_USER_KEY", "0") == "1":
+        return ""          # ignore any key on the machine (even one left in Windows environment variables): visitors must bring their own
+    key = (os.getenv("GEMINI_API_KEY") or "").strip().strip('"').strip("'")
+    low = key.lower()
+    if not key or any(low.startswith(x) or x in low for x in _PLACEHOLDERS if x != "<") or "<" in key:
+        return ""
+    return key
+
+
+def _current_key():
+    return _user_key.get() or server_key()
+
+
+def friendly_error(e):
+    """Turns any Gemini failure into (code, plain message, http status). The raw text is never shown to the user."""
+    t = str(e)
+    low = t.lower()
+    if "api_key_invalid" in low or "api key not valid" in low or "permission_denied" in low or "unauthenticated" in low \
+            or "403" in t or "401" in t or "no gemini api key" in low or "api key" in low and "invalid" in low:
+        return ("bad_key", "Gemini did not accept this API key. Check that you copied all of it, or create a new one at aistudio.google.com/apikey.", 403)
+    if "resource_exhausted" in low or "429" in t or "quota" in low or "perday" in low or "used up" in low or "rate limit" in low:
+        return ("quota", "This API key has used up its free Gemini requests for today. They reset every day. You can come back later, or add a different key.", 429)
+    if "503" in t or "unavailable" in low or "overloaded" in low or " 500" in t or "deadline" in low or "internal error" in low:
+        return ("busy", "Gemini is busy right now. Wait a minute and try again.", 503)
+    if any(x in low for x in ("connect", "timed out", "timeout", "getaddrinfo", "name resolution", "network", "ssl")):
+        return ("network", "Could not reach Gemini. Check your internet connection and try again.", 502)
+    if any(x in low for x in ("safety", "blocked", "prohibited", "recitation")):
+        return ("blocked", "Gemini would not answer that. Try different wording or another part of your notes.", 422)
+    return ("unknown", "The AI had a problem with that request. Please try again.", 502)
+
+
+def _fp(key):
+    return hashlib.sha256(key.encode()).hexdigest()[:12] if key else ""
+
+
+def usage(key):
+    """Requests made with this key since the server started."""
+    return _counts.get(_fp(key), 0)
 
 
 def _get_client():
-    global _client
-    if _client is None:
-        key = os.getenv("GEMINI_API_KEY")
-        if not key:
-            raise RuntimeError("GEMINI_API_KEY is missing. Put it in a .env file (see .env.example).")
-        _client = genai.Client(api_key=key)
-    return _client
+    if _client is not None:
+        return _client
+    key = _current_key()
+    if not key:
+        raise RuntimeError("No Gemini API key. Click the key button at the top of the page and paste yours (free at aistudio.google.com/apikey).")
+    c = _clients.get(key)
+    if c is None:
+        if len(_clients) > 200:
+            _clients.clear()
+        c = _clients[key] = genai.Client(api_key=key)
+    return c
+
+
+def check_key():
+    """One tiny request to prove the current key works. Returns the model that answered."""
+    resp = _generate("Reply with the single word OK.", "You answer with one word.")
+    return {"ok": True, "model": MODELS[0], "reply": (resp.text or "").strip()[:20]}
 
 
 def status():
     """What the app is really using (shown by /health and at startup). Only the last 4 characters of the key are shown."""
-    key = os.getenv("GEMINI_API_KEY") or ""
-    return {"model": MODELS[min(_active, len(MODELS) - 1)], "models": MODELS, "key_ending": key[-4:] if key else None}
+    key = server_key()
+    return {"model": MODELS[min(_active, len(MODELS) - 1)], "models": MODELS, "key_ending": key[-4:] if key else None, "requests": _requests}
 
 
 class _ModelOut(Exception):
@@ -118,7 +189,13 @@ class _ModelOut(Exception):
 def _call_model(model, contents, config):
     for attempt in range(MAX_RETRIES):
         try:
-            return _get_client().models.generate_content(model=model, contents=contents, config=config)
+            out = _get_client().models.generate_content(model=model, contents=contents, config=config)
+            global _requests
+            _requests += 1
+            f = _fp(_user_key.get())
+            if f:
+                _counts[f] = _counts.get(f, 0) + 1
+            return out
         except Exception as e:  # noqa: BLE001
             text = str(e)
             if "PerDay" in text:   # daily quota: waiting 15 seconds will not help
@@ -146,12 +223,18 @@ def _generate(contents, system, schema=None, temperature=None, tools=None):
     config = types.GenerateContentConfig(**cfg)
 
     reasons = []
-    for idx in range(_active, len(MODELS)):
+    global _active
+    fp = _fp(_user_key.get())
+    start = _active_by.get(fp, 0) if fp else _active
+    for idx in range(start, len(MODELS)):
         try:
             resp = _call_model(MODELS[idx], contents, config)
-            if idx != _active:
+            if idx != start:
                 print(f"[ai] switched to model '{MODELS[idx]}' ({'; '.join(reasons)})")
-                _active = idx
+                if fp:
+                    _active_by[fp] = idx
+                else:
+                    _active = idx
             return resp
         except _ModelOut as e:
             reasons.append(str(e))
@@ -202,8 +285,15 @@ def _clamp(n, low=0, high=10):
 
 
 # ------------------------------------------------------------------ Function 1: the question loop
-def _ask(source_text, history):
+def _time_note(time_limit):
+    if not time_limit:
+        return ""
+    return f"TIME LIMIT: the explainer has {int(time_limit)} seconds to answer each question, so ask something that can be answered well within that.\n\n"
+
+
+def _ask(source_text, history, time_limit=0):
     contents = (
+        _time_note(time_limit) +
         f"REFERENCE TEXT:\n{source_text}\n\n"
         f"CONVERSATION SO FAR:\n{format_transcript(history) if history else '(empty: this is question 1)'}\n\n"
         "Write your next question."
@@ -211,15 +301,15 @@ def _ask(source_text, history):
     return _structured_call(contents, prompts.QUESTION_SYSTEM, NextTurn)
 
 
-def opening_question(source_text):
+def opening_question(source_text, time_limit=0):
     """The AI starts the conversation. Returns {"next_question", "should_stop": False, "round": 1, "needs_whiteboard", "diagram_svg"}."""
-    turn = _ask(source_text, [])
+    turn = _ask(source_text, [], time_limit)
     question = (turn.next_question or "").strip() or "In your own words, what is the main idea of this topic?"
     return {"next_question": question, "should_stop": False, "round": 1, "needs_whiteboard": bool(turn.needs_whiteboard) or bool(turn.diagram_svg),
             "diagram_svg": turn.diagram_svg or ""}
 
 
-def next_question(source_text, conversation_history, new_user_reply):
+def next_question(source_text, conversation_history, new_user_reply, time_limit=0):
     """
     Returns {"next_question": str, "should_stop": bool, "round": int, "needs_whiteboard": bool}.
     `conversation_history` is everything BEFORE new_user_reply and starts with the AI's first question.
@@ -230,7 +320,7 @@ def next_question(source_text, conversation_history, new_user_reply):
     if questions_asked >= MAX_ROUNDS:
         return {"next_question": "", "should_stop": True, "round": questions_asked, "needs_whiteboard": False, "diagram_svg": ""}
 
-    turn = _ask(source_text, history)
+    turn = _ask(source_text, history, time_limit)
     question = (turn.next_question or "").strip()
     if not question:
         return {"next_question": "", "should_stop": True, "round": questions_asked, "needs_whiteboard": False, "diagram_svg": ""}
@@ -277,34 +367,8 @@ def final_score(source_text, transcript):
     }
 
 
-# ------------------------------------------------------------------ Milestone 6: fact-check
-def fact_check(source_text, transcript=None):
-    """
-    Google Search grounded check. Returns {"findings": str, "sources": [{"title","url"}]}.
-    Output is plain text because structured JSON and search grounding are not reliably combinable.
-    """
-    contents = f"REFERENCE TEXT:\n{source_text}\n"
-    if transcript:
-        contents += f"\nTRANSCRIPT:\n{format_transcript(transcript)}\n"
-    tools = [types.Tool(google_search=types.GoogleSearch())]
-    resp = _generate(contents, prompts.FACT_CHECK_SYSTEM, tools=tools)
-
-    sources, seen = [], set()
-    try:
-        meta = resp.candidates[0].grounding_metadata
-        for chunk in (getattr(meta, "grounding_chunks", None) or []):
-            web = getattr(chunk, "web", None)
-            url = getattr(web, "uri", None)
-            if url and url not in seen:
-                seen.add(url)
-                sources.append({"title": getattr(web, "title", "") or url, "url": url})
-    except (AttributeError, IndexError, TypeError):
-        pass
-    return {"findings": (resp.text or "").strip(), "sources": sources}
-
-
 # ------------------------------------------------------------------ Milestone 6: mistake report
-def mistake_bundle(source_text, transcript, score, fact_check_text=""):
+def mistake_bundle(source_text, transcript, score, fact_check_text="", language="English"):
     """
     Returns (markdown, extras). The Markdown has FIXED headings (see REPORT_HEADINGS) so it can be re-uploaded and parsed;
     each mistake block is separated by a line containing only '---'. extras holds the detailed material used by the Word reports.
@@ -314,7 +378,8 @@ def mistake_bundle(source_text, transcript, score, fact_check_text=""):
         f"TRANSCRIPT:\n{format_transcript(transcript)}\n\n"
         f"SCORES: {score['scores']}\n"
     )
-    data = _structured_call(contents, prompts.MISTAKES_SYSTEM, MistakeList)
+    system = prompts.MISTAKES_SYSTEM.replace("{language}", language or "English")
+    data = _structured_call(contents, system, MistakeList)
     items = data.items
 
     lines = ["# Mistake Report", "", "## Score Summary", f"- Overall: {score['overall']}/100"]
@@ -338,13 +403,19 @@ def mistake_bundle(source_text, transcript, score, fact_check_text=""):
         "strengths": [x.strip() for x in data.strengths if x.strip()],
         "study_plan": [x.strip() for x in data.study_plan if x.strip()],
         "question_feedback": [q.model_dump() for q in data.question_feedback],
+        "notes": {
+            "language": language,
+            "notes": data.revision_notes.strip(),
+            "notes_translated": (data.revision_notes.strip() if (language or "English").strip().lower() == "english"
+                                 else data.revision_notes_translated.strip()),
+        },
     }
     return "\n".join(lines).strip() + "\n", extras
 
 
-def mistake_report(source_text, transcript, score, fact_check_text=""):
+def mistake_report(source_text, transcript, score, fact_check_text="", language="English"):
     """Markdown gap report only (see mistake_bundle)."""
-    return mistake_bundle(source_text, transcript, score, fact_check_text)[0]
+    return mistake_bundle(source_text, transcript, score, fact_check_text, language)[0]
 
 
 # ------------------------------------------------------------------ Milestone 7: notes + translation
@@ -360,36 +431,29 @@ def notes_bundle(source_text, transcript, language="Kannada"):
 
 
 # ------------------------------------------------------------------ one call at the end of a session
-def full_package(source_text, transcript, language="English", include_fact_check=True, include_notes=True, score=None):
+def full_package(source_text, transcript, language="English", include_notes=True, score=None):
     """
-    Everything the report page needs. The score and the gap report are required; the fact-check and the notes
-    are optional (they cost extra requests) and never crash the result: they return an "error" string instead.
+    Everything the report page needs, in order of importance so the essential parts exist even if the quota runs out half way:
+      1. score (skipped when given)   2. gap report + strengths + study plan + question feedback + notes + translation (ONE request)
     """
     score = score or final_score(source_text, transcript)
-    package = {"score": score, "fact_check": None, "report_markdown": None, "notes": None}
-
-    fc_text = ""
-    if include_fact_check:
-        try:
-            package["fact_check"] = fact_check(source_text, transcript)
-            fc_text = package["fact_check"]["findings"]
-            if fc_text.startswith("No suspected errors"):
-                fc_text = ""
-        except Exception as e:  # noqa: BLE001
-            package["fact_check"] = {"findings": "", "sources": [], "error": str(e)}
+    package = {"score": score, "report_markdown": None, "notes": None}
 
     try:
-        package["report_markdown"], extras = mistake_bundle(source_text, transcript, score, fc_text)
+        package["report_markdown"], extras = mistake_bundle(source_text, transcript, score, "", language)
+        notes = extras.pop("notes", None)
         package.update(extras)
+        if include_notes:
+            package["notes"] = notes
     except Exception as e:  # noqa: BLE001
         package["report_markdown"] = None            # never store an error message as if it were the report
-        package["report_error"] = str(e)
+        package["report_error"] = friendly_error(e)[1]
+        if include_notes:                            # the older, separate notes request as a fallback
+            try:
+                package["notes"] = notes_bundle(source_text, transcript, language)
+            except Exception as e2:  # noqa: BLE001
+                package["notes"] = {"language": language, "notes": "", "notes_translated": "", "error": friendly_error(e2)[1]}
 
-    if include_notes:
-        try:
-            package["notes"] = notes_bundle(source_text, transcript, language)
-        except Exception as e:  # noqa: BLE001
-            package["notes"] = {"language": language, "notes": "", "notes_translated": "", "error": str(e)}
     return package
 
 

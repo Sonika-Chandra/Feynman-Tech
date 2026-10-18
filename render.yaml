@@ -1,0 +1,16 @@
+# Render "Blueprint": New + > Blueprint > pick this repo. Leave GEMINI_API_KEY unset: every visitor pastes their own key on the site.
+services:
+  - type: web
+    name: vocalis
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --chdir backend app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 180
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: PUBLIC
+        value: "1"
+      - key: FEEDBACK_KEY
+        sync: false

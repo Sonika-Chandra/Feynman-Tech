@@ -11,6 +11,9 @@ IMAGE_SYSTEM = """You convert an image of study material into plain text for a s
   'If <question>: yes -> go to step X; no -> go to step Y'. Use the exact labels shown in the image.
 - If it is a photo or scan of printed or handwritten notes: transcribe it faithfully, keeping headings on their own lines.
 - If it is any other diagram: explain what it shows in short, plain sentences, using the labels in the image.
+- IMPORTANT: transcribe EXACTLY what is shown, even if it looks scientifically wrong. Never correct, fix, improve or complete it,
+  because someone else will check it for mistakes. Keep wrong labels, wrong places, wrong numbers and the direction of every arrow
+  (if an arrow points backwards, write 'step X leads back to step Y').
 Output only the resulting text, with no commentary."""
 
 OCR_SYSTEM = """You extract text from a scanned document. Keep the original wording. Put each heading on its own

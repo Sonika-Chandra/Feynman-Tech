@@ -44,7 +44,7 @@ print("\n[1] Files")
 required = [
     "ai/__init__.py", "ai/ai_module.py", "ai/prompts.py", "ai/test_ai.py", "ai/test_logic.py", "ai/hello_gemini.py",
     "backend/app.py", "backend/database.py", "backend/material.py", "backend/transcribe.py",
-    "backend/fake_ai.py", "backend/test_api.py", "backend/svg_clean.py", "backend/export_docx.py", "check_gemini.py",
+    "backend/fake_ai.py", "backend/test_api.py", "backend/test_full_loop.py", "backend/svg_clean.py", "backend/export_docx.py", "check_gemini.py",
     "ingestion/__init__.py", "ingestion/extract.py", "ingestion/pdf_reader.py", "ingestion/pptx_reader.py",
     "ingestion/docx_reader.py", "ingestion/topics.py", "ingestion/audio.py", "ingestion/image_reader.py",
     "ingestion/report_parser.py", "ingestion/test_ingestion.py",
@@ -68,7 +68,7 @@ except Exception as e:  # noqa: BLE001
 
 try:
     from ai import ai_module
-    needed_ai = ["opening_question", "next_question", "describe_drawing", "final_score", "fact_check", "mistake_report", "notes_bundle", "full_package"]
+    needed_ai = ["opening_question", "next_question", "describe_drawing", "final_score", "mistake_report", "notes_bundle", "full_package"]
     absent = [n for n in needed_ai if not hasattr(ai_module, n)]
     check("ai_module.py has every function the backend uses", not absent, "missing: " + ", ".join(absent))
 except Exception as e:  # noqa: BLE001
@@ -124,6 +124,12 @@ res = subprocess.run([sys.executable, os.path.join(BACKEND, "test_api.py")], cwd
 lines = (res.stdout or "").splitlines()
 bad = [l for l in lines if l.startswith("FAIL")]
 check("backend/test_api.py passes", res.returncode == 0 and not bad,
+      "\n        ".join(bad[:4] + (res.stderr or "").strip().splitlines()[-3:]))
+
+print("\n[4c] Whole study loop with a stubbed Gemini: 5 questions, report, notes, Word files, test on gaps (free)")
+res = subprocess.run([sys.executable, os.path.join(BACKEND, "test_full_loop.py")], cwd=ROOT, capture_output=True, text=True)
+bad = [l for l in (res.stdout or "").splitlines() if l.startswith("FAIL")]
+check("backend/test_full_loop.py passes (a full loop costs 16 Gemini requests)", res.returncode == 0 and not bad,
       "\n        ".join(bad[:4] + (res.stderr or "").strip().splitlines()[-3:]))
 
 

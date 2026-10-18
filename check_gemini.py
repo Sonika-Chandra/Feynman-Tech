@@ -38,5 +38,5 @@ if any_ok:
 else:
     print("No model worked with this key. If every line says 'limit: 0' or 'daily quota', the Google project behind the key")
     print("has no free allowance left (or none in your region). Use a key from a NEW AI Studio project, or enable billing.")
-    print("To keep working without any key: set USE_FAKE_AI=1 in .env and RESTART the backend.")
+    print("Create a fresh key in a NEW project at aistudio.google.com, put it in .env and RESTART the backend.")
 sys.exit(0 if any_ok else 1)

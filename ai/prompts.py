@@ -17,11 +17,19 @@ Rules:
 - Never give away the answer and never correct them directly.
 - Use the 5 questions to cover different key ideas. Never repeat or rephrase an earlier question.
 - Base every question on the REFERENCE TEXT, not on outside knowledge.
+- TIME LIMIT: if the input gives a time limit per answer, every question must be answerable well inside it. About 30 seconds: one short fact or one small calculation. About 60 seconds: a few sentences or one worked step. 2 minutes or more: a short explanation or a short worked problem. Never ask for long derivations or lists of many items when the limit is short.
+- MATHS AND NUMBERS: if the REFERENCE TEXT is mathematical, or contains formulas, quantities, units, data or anything computable (physics, chemistry, economics, statistics, accounts and so on), at least 2 of the 5 questions must be numerical or graphical instead of purely verbal. Choose from: (a) a short numerical problem with concrete numbers written in the question, solvable with a scientific calculator, asking for the answer and the method; (b) "sketch the graph of ..." or "plot these points and describe the trend", asking for labelled axes; (c) a diagram or worked layout to complete or label. Make the numbers neat and consistent with the REFERENCE TEXT, and for graph questions set needs_whiteboard to true. Do not give the answer.
 - needs_whiteboard: set to true ONLY when the REFERENCE TEXT involves mathematics, a calculation, a graph, a diagram, a flowchart or a structure AND your question asks the explainer to draw, label, sketch, plot or work something out on paper. Say clearly what to draw in the question. Otherwise set it to false.
-- diagram_svg: normally an empty string "". If the REFERENCE TEXT describes something with visible parts (a cell, an organ, an apparatus, a circuit, a flowchart, a cycle, a graph with axes), you MAY draw a simple diagram for the explainer to label or identify. Use this for at most 2 of the 5 questions and never for two questions in a row.
-  The diagram must be one complete SVG: viewBox="0 0 400 300", only these elements: svg, g, line, rect, circle, ellipse, path, polygon, polyline, text. Dark strokes (#1b1214), fill "none" or a light colour, stroke-width 2 to 3, under 3000 characters, no scripts.
-  Mark each part to be identified with a small numbered circle (circle r="12" fill="#ffffff" stroke="#1b1214", with its number 1, 2, 3 ... as a text element inside; at most 5 numbers) placed on or next to the part. Do NOT write the names of the parts anywhere in the SVG.
-  When you draw a diagram, your question must ask the explainer to name or identify the numbered parts (or to label the diagram), and needs_whiteboard must be true.
+- diagram_svg: normally an empty string "". If the REFERENCE TEXT describes something with visible parts or structure (a cell, an organ, a body system, an apparatus, a circuit, a map, a flowchart, a cycle, a food web, a molecule, a graph with axes), you SHOULD draw a detailed, textbook-quality diagram for the explainer to label or identify. Use this for at most 2 of the 5 questions and never for two questions in a row.
+  Quality rules for the diagram:
+  - One complete SVG with viewBox="0 0 640 480" and xmlns="http://www.w3.org/2000/svg". Allowed elements only: svg, g, line, rect, circle, ellipse, path, polygon, polyline, text. No scripts, no images, no gradients, no url().
+  - Be detailed: draw every important structure of the topic (typically 8 to 20 shapes) with realistic proportions, an outline, internal detail lines and soft fill colours (pale greens, blues, pinks, oranges, creams; never fully black). Use stroke="#1b1214" and stroke-width 2 to 6 (thicker for the main outline). Use curved paths for organic shapes.
+  - For graphs, circuits and flowcharts draw axes, scales or components accurately, with numbers and units written as text, and leave only the thing to be identified unlabelled.
+  - Mark each part to be identified with a numbered circle (circle r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2" and a bold centred text with its number). Use between 4 and 8 numbers, placed on the part itself or touching it. Do NOT write the names of the numbered parts anywhere in the SVG.
+  - Under 7000 characters.
+  When you draw a diagram, your question must ask the explainer to name or identify the numbered parts (or to say what each one does), and needs_whiteboard must be true.
+  This example shows the expected level of detail ONLY. Never reuse its subject unless the REFERENCE TEXT is about it; draw what the REFERENCE TEXT describes:
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle"><rect x="30" y="30" width="580" height="420" rx="46" fill="#e8f1d8" stroke="#1b1214" stroke-width="6"/><rect x="46" y="46" width="548" height="388" rx="36" fill="#f6fbe9" stroke="#1b1214" stroke-width="2.5"/><path d="M330 95 C420 70 540 100 545 190 C550 280 520 395 410 400 C330 404 300 330 305 250 C308 180 280 110 330 95 Z" fill="#cfe8f5" stroke="#1b1214" stroke-width="3"/><ellipse cx="155" cy="190" rx="68" ry="58" fill="#e7c9d6" stroke="#1b1214" stroke-width="3"/><circle cx="150" cy="188" r="20" fill="#b97a96" stroke="#1b1214" stroke-width="2"/><ellipse cx="130" cy="340" rx="44" ry="24" fill="#7fc47a" stroke="#1b1214" stroke-width="2.5" transform="rotate(-18 130 340)"/><path d="M95 345 L162 330 M100 336 L158 322" stroke="#3d7a3a" stroke-width="2" fill="none"/><ellipse cx="255" cy="385" rx="38" ry="20" fill="#7fc47a" stroke="#1b1214" stroke-width="2.5" transform="rotate(12 255 385)"/><path d="M225 388 L283 380" stroke="#3d7a3a" stroke-width="2" fill="none"/><ellipse cx="270" cy="95" rx="40" ry="20" fill="#7fc47a" stroke="#1b1214" stroke-width="2.5" transform="rotate(-8 270 95)"/><path d="M240 98 L298 90" stroke="#3d7a3a" stroke-width="2" fill="none"/><ellipse cx="240" cy="270" rx="40" ry="19" fill="#f2b28c" stroke="#1b1214" stroke-width="2.5" transform="rotate(35 240 270)"/><path d="M214 258 C226 272 218 262 232 276 C242 286 236 274 252 286" stroke="#b5532a" stroke-width="2" fill="none"/><path d="M92 90 C120 70 150 110 180 92 C210 74 220 118 240 108" fill="none" stroke="#1b1214" stroke-width="3"/><path d="M92 112 C120 92 150 132 180 114 C210 96 220 140 240 130" fill="none" stroke="#1b1214" stroke-width="3"/><path d="M400 410 C440 405 470 425 500 415" fill="none" stroke="#1b1214" stroke-width="3"/><circle cx="100" cy="270" r="4" fill="#1b1214"/><circle cx="112" cy="262" r="4" fill="#1b1214"/><circle cx="90" cy="282" r="4" fill="#1b1214"/><circle cx="118" cy="280" r="4" fill="#1b1214"/><circle cx="40" cy="240" r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2"/><text x="40" y="246">1</text><circle cx="56" cy="150" r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2"/><text x="56" y="156">2</text><circle cx="155" cy="190" r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2"/><text x="155" y="196">3</text><circle cx="430" cy="240" r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2"/><text x="430" y="246">4</text><circle cx="130" cy="340" r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2"/><text x="130" y="346">5</text><circle cx="240" cy="270" r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2"/><text x="240" y="276">6</text><circle cx="165" cy="102" r="15" fill="#ffffff" stroke="#1b1214" stroke-width="2"/><text x="165" y="108">7</text></svg>
 """
 
 # ---------------------------------------------------------------- Milestone 4
@@ -62,24 +70,6 @@ Rules:
 """
 
 # ---------------------------------------------------------------- Milestone 6
-FACT_CHECK_SYSTEM = """You are a careful fact-checker. Use Google Search to verify claims.
-
-You receive REFERENCE TEXT (study material) and optionally a TRANSCRIPT of a student's statements.
-Check two things:
-(a) Is anything in the REFERENCE TEXT likely to be factually wrong or outdated?
-(b) Does any claim by the student contradict well-established facts, even if it matches the reference text?
-
-Never state an error as certain. Always call it a SUSPECTED error. Do not flag style, wording or opinions.
-
-For each suspected issue, output exactly these four lines, then a blank line:
-- Where: study material OR student
-- Statement: <the exact claim, briefly>
-- Concern: <why it may be wrong and what the verified fact appears to be>
-- Confidence: low OR medium OR high
-
-If you find nothing, output exactly: No suspected errors found.
-"""
-
 MISTAKES_SYSTEM = """You are a patient tutor writing a detailed feedback report for a student. Use the REFERENCE TEXT, the TRANSCRIPT (STUDENT lines are the student's words) and the SCORES.
 
 Return these parts:
@@ -100,6 +90,10 @@ question_feedback: one entry for each question the tutor asked, in order:
 - question: the tutor's question, shortened if long.
 - answer_summary: one or two sentences summarising what the student answered (include what they drew or wrote on a whiteboard if shown).
 - feedback: two or three sentences: what was right, what was missing or wrong, and how to improve the answer.
+
+revision_notes: concise Markdown study notes focused ONLY on the parts the student struggled with (wrong, vague or missing ideas). 2 to 4 short headings (##) and 6 to 10 bullets (-) in total, plain language a beginner can follow. If there were no gaps, write short notes on the key ideas instead.
+
+revision_notes_translated: the same notes translated into {language}, keeping the Markdown structure. Keep technical terms in English in brackets after the translated term when there is no common translation. If {language} is English, return an empty string.
 
 Address the student as "you" in strengths, study_plan and feedback.
 """

@@ -15,7 +15,7 @@ async function waitFor(fn, ms = 8000, label = '') {
   const dom = await JSDOM.fromURL(URL_, {
     runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true,
     beforeParse(w) {
-      w.fetch = (u, o) => (w.__failFull && /mode=full/.test(String(u))) ? Promise.reject(new Error('simulated failure')) : fetch(u, o);
+      w.fetch = (u, o) => (w.__sample && /\/insights(\?|$)/.test(String(u)) && (w.__lastInsights = String(u), true)) ? Promise.resolve(new Response(JSON.stringify(w.__sample), { headers: { 'content-type': 'application/json' } })) : (w.__quotaOnce && /session\/answer/.test(String(u)) && (w.__quotaOnce = false, true)) ? Promise.resolve(new Response(JSON.stringify({ error: 'quota', code: 'quota' }), { status: 429, headers: { 'content-type': 'application/json' } })) : (w.__failFull && /mode=full/.test(String(u))) ? Promise.reject(new Error('simulated failure')) : fetch(u, o);
       w.FormData = FormData; w.Blob = Blob; w.File = File;
       w.URL.createObjectURL = () => 'blob:fake'; w.URL.revokeObjectURL = () => {};
       w.scrollTo = () => {};
@@ -62,7 +62,7 @@ async function waitFor(fn, ms = 8000, label = '') {
   Object.defineProperty($('fileInput'), 'files', { value: [f], configurable: true });
   $('fileInput').dispatchEvent(new w.Event('change'));
   ok('upload moves to the topic picker', !!(await waitFor(() => visible('topics'))));
-  ok('topic cards shown', d.querySelectorAll('.topic').length >= 1);
+  ok('topic dropdown shown with options', $('topicSelect').options.length >= 1);
   ok('file name shown', /notes\.txt/.test($('topicsFile').textContent));
 
   async function answer(text) { type($('answerBox'), text); click($('sendBtn')); }
@@ -73,11 +73,25 @@ async function waitFor(fn, ms = 8000, label = '') {
   ok('settings card has speech language and voice options', !!$('speechLang') && !!$('optAccurate') && !!$('optSpeak'));
 
   // choose topic -> AI speaks first
-  click(d.querySelector('.topic'));
+  click($('topicStart'));
   ok('page changes to the chat', !!(await waitFor(() => visible('chat'))));
   await waitFor(() => d.querySelectorAll('.msg.ai').length >= 1);
   ok('AI asks question 1 before the user says anything', d.querySelectorAll('.msg.ai').length === 1 && d.querySelectorAll('.msg.me').length === 0);
   ok('progress shows 1 of 5', /1 of 5/.test($('chatRoundLabel').textContent));
+  ok('answer box is open the moment the question appears (never locked behind the reading)', !$('answerBox').disabled && !$('sendBtn').disabled);
+  click($('keyBtn'));
+  ok('API key dialog opens from the top bar', !$('keyModal').hidden);
+  click($('keyClose'));
+  ok('API key dialog closes', $('keyModal').hidden);
+  // calculator and paste block
+  click($('calcToggle'));
+  ok('calculator opens', !$('calcPanel').hidden);
+  type($('calcInput'), '2+3*4');
+  ok('calculator shows 14 live', /= 14/.test($('calcResult').textContent));
+  click($('calcClose'));
+  const pasteEv = new w.Event('paste', { cancelable: true, bubbles: true });
+  $('answerBox').dispatchEvent(pasteEv);
+  ok('paste is blocked', pasteEv.defaultPrevented);
   ok('whiteboard closed for a normal question', !$('chatLayout').classList.contains('wb-open'));
   ok('countdown timer is shown', !$('timer').hidden && /0:0[12]/.test($('timerText').textContent), $('timerText').textContent);
 
@@ -115,7 +129,19 @@ async function waitFor(fn, ms = 8000, label = '') {
   ok('board is cleared after sending', !w.Vocalis.whiteboard.hasInk());
   ok('whiteboard closes for a normal question', !$('chatLayout').classList.contains('wb-open'));
 
-  for (let q = 3; q <= 4; q++) {
+  // quota runs out in the middle of the chat: the key box opens, a new key is saved, and the same answer goes through
+  w.__quotaOnce = true;
+  await answer('Light is absorbed by chlorophyll.');
+  ok('quota error opens the key box (not an error string)', !!(await waitFor(() => !$('keyModal').hidden)) && /used up/.test($('keyMsg').textContent), $('keyMsg').textContent);
+  ok('typed answer is kept while the key box is open', $('answerBox').value === 'Light is absorbed by chlorophyll.');
+  const before = d.querySelectorAll('.msg.ai').length;
+  type($('keyInput'), 'AIzaTestKey_0123456789_abcdefghij');
+  click($('keySave'));
+  ok('after the new key works the same answer is sent and the next question appears', !!(await waitFor(() => d.querySelectorAll('.msg.ai').length === before + 1 && !d.querySelector('.typing'), 12000)));
+  ok('key box closes by itself', $('keyModal').hidden);
+  w.Vocalis.api.setKey('');
+
+  for (let q = 4; q <= 4; q++) {
     await answer('Answer to question ' + q);
     await waitFor(() => d.querySelectorAll('.msg.ai').length === q + 1 && !d.querySelector('.typing'));
   }
@@ -126,7 +152,7 @@ async function waitFor(fn, ms = 8000, label = '') {
   ok('moves to the report after the 5th answer', !!(await waitFor(() => visible('report'), 10000)));
   ok('score ring shows 75', !!(await waitFor(() => $('scoreNum').textContent === '75')));
   ok('four metric cards', d.querySelectorAll('.metric').length === 4);
-  ok('four big tab cards', d.querySelectorAll('.tab-card').length === 4);
+  ok('three big tab cards (no fact-check)', d.querySelectorAll('.tab-card').length === 3);
   ok('gap report loads', !!(await waitFor(() => /Concept Misunderstood/.test($('tab-gaps').textContent))));
   ok('gap blocks rendered as cards', d.querySelectorAll('.gap-card').length >= 1);
   ok('status says the report is ready', /report is ready/.test($('reportStatus').textContent), $('reportStatus').textContent);
@@ -138,10 +164,28 @@ async function waitFor(fn, ms = 8000, label = '') {
   const gcb = gcard.querySelector('input[type=checkbox]'); gcb.checked = true; gcb.dispatchEvent(new w.Event('change', { bubbles: true }));
   ok('ticking "reviewed" updates progress', gcard.classList.contains('done') && /1 of \d+ reviewed/.test($('gapProgressText').textContent), $('gapProgressText').textContent);
   ok('save and retest enabled', !$('downloadBtn').disabled && !$('retestBtn').disabled);
-  ok('Word and .md download buttons enabled', !$('fullDocBtn').disabled && !$('mdBtn').disabled);
+  ok('progress card shown on the report', !!(await waitFor(() => !$('progressCard').hidden)));
+  ok('calibration line shown', /predicted/.test($('calibration').textContent));
+  ok('feedback card says it is required', !$('reqTag').hidden);
+  const star4 = $('stars').querySelector('.star[data-n="4"]');
+  star4.dispatchEvent(new w.MouseEvent('mouseenter', { bubbles: true })); star4.dispatchEvent(new w.MouseEvent('mouseover', { bubbles: true }));
+  ok('hovering a star does not rebuild it (that made mouse clicks miss)', $('stars').contains(star4) && star4.classList.contains('on'));
+  click($('goHome'));
+  ok('leaving the report is blocked until a rating is given', visible('report'));
+  click(d.querySelector('.nav-link[data-nav=impact]'));
+  ok('the Impact link is blocked too', visible('report'));
+  click($('stars').querySelector('.star[data-n="4"]'));
+  ok('one tap on a star saves the rating', !!(await waitFor(() => !$('fbDone').hidden)));
+  ok('required tag disappears after rating', $('reqTag').hidden);
+  click($('recRow').querySelector('[data-v=yes]'));
+  click($('fbSend'));
+  await sleep(300);
+  ok('pasting marks the session as flagged', !$('integrityBanner').hidden && $('reportBadge').textContent.includes('Flagged'));
+  ok('Word download buttons enabled and no .md button', !$('fullDocBtn').disabled && !$('mdBtn'));
   await waitFor(() => $('tab-transcript').querySelectorAll('.t-line').length >= 10);
   ok('conversation tab lists all 10 messages', $('tab-transcript').querySelectorAll('.t-line').length === 10, String($('tab-transcript').querySelectorAll('.t-line').length));
   click(d.querySelector('[data-tab=notes]'));
+  ok('no .md download on the notes tab', !$('saveNotes'));
   ok('notes tab shows', !$('tab-notes').hidden && /Notes/.test($('tab-notes').textContent));
 
   // re-upload the gap report
@@ -164,6 +208,23 @@ async function waitFor(fn, ms = 8000, label = '') {
   click(d.querySelector('.h-item'));
   ok('opening a past session shows its report', !!(await waitFor(() => visible('report') && $('scoreNum').textContent === '75')));
 
+  // impact page draws charts from the saved numbers
+  w.__sample = { started: 9, sessions: 8, flagged: 1, students: 5, timed_sessions: 2, average_score: 68.5, score_histogram: [0, 0, 1, 1, 1, 2, 2, 1, 0, 0], criteria_average: { accuracy: 7, completeness: 5.5, consistency: 7.2, clarity: 6.8 }, usefulness_counts: [0, 0, 1, 3, 4], average_usefulness: 4.4, ratings: 8, recommend: { yes: 6, maybe: 2, no: 0 }, tags: [['Questions were good', 5], ['Diagram helped', 3]], confidence: { rated: 8, average_before: 72, average_actual: 66, average_after: 70, overconfident: 3, close: 4, underconfident: 1 }, retry: { topics: 3, improved: 2, average_gain: 9, pairs: [{ first: 40, last: 62 }, { first: 55, last: 70 }, { first: 80, last: 76 }] }, badges: { Silver: 4, Gold: 2, Flagged: 1 }, bucket: 'hour', per_bucket: [['2026-10-18T09:00:00Z', 3], ['2026-10-18T10:00:00Z', 5]] };
+  click(d.querySelector('.nav-link[data-nav=impact]'));
+  ok('Impact page opens', !!(await waitFor(() => visible('impact') && d.querySelectorAll('#impactBody .chart').length >= 5)));
+  ok('Impact page shows tiles and a recommend line', d.querySelectorAll('#impactBody .tile').length === 6 && /Would recommend/.test($('impactBody').textContent), $('impactBody').textContent.slice(0, 200));
+  ok('Impact page draws the retry rows and bars', d.querySelectorAll('.dumb-row').length === 3 && d.querySelectorAll('.vbars .vb').length >= 15);
+  click(d.querySelector('#winChips [data-h="3"]'));
+  await waitFor(() => /hours=3/.test(w.__lastInsights || ''));
+  ok('"Last 3 hours" asks the server for just that window', /insights\?hours=3$/.test(w.__lastInsights), w.__lastInsights);
+  await waitFor(() => /Sessions per hour/.test($('impactBody').textContent) && /last 3 hours/.test($('winLabel').textContent));
+  ok('the window is named on the page', /last 3 hours/.test($('winLabel').textContent), $('winLabel').textContent);
+  ok('the hourly chart is titled per hour', /Sessions per hour/.test($('impactBody').textContent));
+  click(d.querySelector('#winChips [data-h="0"]'));
+  click($('impactBack'));
+  await waitFor(() => visible('home'));
+  w.__sample = null;
+
   // the AI cannot write the full report (quota etc.): the page must say so and still allow saving
   w.__failFull = true;
   click($('goHome')); await waitFor(() => visible('home') && d.querySelector('.h-item .pill'));
@@ -172,7 +233,7 @@ async function waitFor(fn, ms = 8000, label = '') {
   ok('failure is explained on the page', /basic report/.test($('reportStatus').textContent) && /could not write/.test($('reportStatus').textContent), $('reportStatus').textContent);
   ok('save and test-on-gaps still work after a failure', !$('downloadBtn').disabled && !$('retestBtn').disabled);
   ok('basic report has the fixed headings', /### Concept Misunderstood/.test(String(w.__lastMd || '')) || d.querySelectorAll('.gap-card').length >= 1);
-  ok('fact-check and notes tabs explain they are unavailable', /not available/i.test($('tab-fact').textContent) && /not available/i.test($('tab-notes').textContent));
+  ok('notes tab explains it is unavailable', /not available/i.test($('tab-notes').textContent) && !$('tab-fact'));
   w.__failFull = false;
   click($('retryFull'));
   await waitFor(() => /report is ready/.test($('reportStatus').textContent), 8000);
