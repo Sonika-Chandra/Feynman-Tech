@@ -42,9 +42,15 @@ def hint(message):
 # ------------------------------------------------------------------ 1. files
 print("\n[1] Files")
 required = [
-    "ai/__init__.py", "ai/ai_module.py", "ai/prompts.py", "ai/test_ai.py", "ai/hello_gemini.py",
+    "ai/__init__.py", "ai/ai_module.py", "ai/prompts.py", "ai/test_ai.py", "ai/test_logic.py", "ai/hello_gemini.py",
     "backend/app.py", "backend/database.py", "backend/material.py", "backend/transcribe.py",
-    "backend/fake_ai.py", "backend/test_api.py", "docs/api.md", "requirements.txt", ".gitignore", ".env.example",
+    "backend/fake_ai.py", "backend/test_api.py", "backend/svg_clean.py", "backend/export_docx.py", "check_gemini.py",
+    "ingestion/__init__.py", "ingestion/extract.py", "ingestion/pdf_reader.py", "ingestion/pptx_reader.py",
+    "ingestion/docx_reader.py", "ingestion/topics.py", "ingestion/audio.py", "ingestion/image_reader.py",
+    "ingestion/report_parser.py", "ingestion/test_ingestion.py",
+    "frontend/index.html", "frontend/css/style.css", "frontend/js/config.js", "frontend/js/api.js",
+    "frontend/js/wav.js", "frontend/js/speech.js", "frontend/js/whiteboard.js", "frontend/js/orb.js", "frontend/js/app.js",
+    "test-material/photosynthesis.pdf", "docs/api.md", "requirements.txt", ".gitignore", ".env.example",
 ]
 missing = [f for f in required if not os.path.exists(os.path.join(ROOT, f))]
 check("all required files exist", not missing, "missing: " + ", ".join(missing))
@@ -62,7 +68,7 @@ except Exception as e:  # noqa: BLE001
 
 try:
     from ai import ai_module
-    needed_ai = ["next_question", "final_score", "fact_check", "mistake_report", "notes_bundle", "full_package"]
+    needed_ai = ["opening_question", "next_question", "describe_drawing", "final_score", "fact_check", "mistake_report", "notes_bundle", "full_package"]
     absent = [n for n in needed_ai if not hasattr(ai_module, n)]
     check("ai_module.py has every function the backend uses", not absent, "missing: " + ", ".join(absent))
 except Exception as e:  # noqa: BLE001
@@ -70,10 +76,17 @@ except Exception as e:  # noqa: BLE001
 
 try:
     import fake_ai
-    absent = [n for n in ["next_question", "final_score", "full_package", "transcribe"] if not hasattr(fake_ai, n)]
+    absent = [n for n in ["opening_question", "next_question", "describe_drawing", "final_score", "full_package"] if not hasattr(fake_ai, n)]
     check("fake_ai.py matches the real AI function names", not absent, "missing: " + ", ".join(absent))
 except Exception as e:  # noqa: BLE001
     check("fake_ai.py imports", False, str(e))
+
+try:
+    from ingestion.extract import extract as _extract
+    from ingestion.audio import transcribe as _transcribe
+    check("ingestion has extract() and transcribe()", callable(_extract) and callable(_transcribe))
+except Exception as e:  # noqa: BLE001
+    check("ingestion imports", False, f"{e}  (run: pip install -r requirements.txt)")
 
 # ------------------------------------------------------------------ 3. secrets
 print("\n[3] Secrets")
@@ -93,8 +106,20 @@ try:
 except FileNotFoundError:
     print("SKIP  git is not installed or not on PATH")
 
-# ------------------------------------------------------------------ 4. backend with fake AI
-print("\n[4] Backend API (fake AI, free)")
+# ------------------------------------------------------------------ 4. ingestion and backend with fake AI
+print("\n[4a] Reading PDF, PowerPoint, Word, text, images and reports (fake AI, free)")
+res = subprocess.run([sys.executable, os.path.join(ROOT, "ingestion", "test_ingestion.py")], cwd=ROOT, capture_output=True, text=True)
+bad = [l for l in (res.stdout or "").splitlines() if l.startswith("FAIL")]
+check("ingestion/test_ingestion.py passes", res.returncode == 0 and not bad,
+      "\n        ".join(bad[:4] + (res.stderr or "").strip().splitlines()[-3:]))
+
+print("\n[4a2] AI module logic: five-question limit, whiteboard text, score reuse (offline, free)")
+res = subprocess.run([sys.executable, os.path.join(ROOT, "ai", "test_logic.py")], cwd=ROOT, capture_output=True, text=True)
+bad = [l for l in (res.stdout or "").splitlines() if l.startswith("FAIL")]
+check("ai/test_logic.py passes", res.returncode == 0 and not bad,
+      "\n        ".join(bad[:4] + (res.stderr or "").strip().splitlines()[-3:]))
+
+print("\n[4b] Backend API including real sample files (fake AI, free)")
 res = subprocess.run([sys.executable, os.path.join(BACKEND, "test_api.py")], cwd=ROOT, capture_output=True, text=True)
 lines = (res.stdout or "").splitlines()
 bad = [l for l in lines if l.startswith("FAIL")]
@@ -104,7 +129,7 @@ check("backend/test_api.py passes", res.returncode == 0 and not bad,
 
 # ------------------------------------------------------------------ 5. real AI through the backend
 def run_real():
-    print("\n[5] Real AI through the backend (about 2 Gemini requests)")
+    print("\n[5] Real AI through the backend (about 4 Gemini requests)")
     os.environ["USE_FAKE_AI"] = "0"
     import io
     import app as backend
@@ -117,10 +142,18 @@ def run_real():
              "and splits water, releasing oxygen and producing ATP and NADPH. In the Calvin cycle, the plant uses ATP "
              "and NADPH to turn carbon dioxide into glucose.")
     c = app.test_client()
-    up = c.post("/upload", data={"file": (io.BytesIO(notes.encode()), "notes.txt")}, content_type="multipart/form-data")
-    sid = c.post("/session/start", json={"upload_id": up.get_json()["upload_id"]}).get_json()["session_id"]
+    reg = c.post("/auth/register", json={"name": "Check", "email": "check@example.com", "password": "secret1"})
+    hdr = {"Authorization": "Bearer " + reg.get_json()["token"]}
+    up = c.post("/upload", data={"file": (io.BytesIO(notes.encode()), "notes.txt")}, content_type="multipart/form-data", headers=hdr)
+    st = c.post("/session/start", json={"upload_id": up.get_json()["upload_id"]}, headers=hdr)
+    check("AI opens the conversation with question 1", st.status_code == 201 and st.get_json().get("next_question"),
+          f"HTTP {st.status_code}: {st.get_data(as_text=True).strip()[:300]}")
+    if st.status_code != 201:
+        return
+    print("        AI opened:", st.get_json()["next_question"])
+    sid = st.get_json()["session_id"]
 
-    r = c.post("/session/answer", json={"session_id": sid, "text": "Plants use sunlight to make food in their leaves."})
+    r = c.post("/session/answer", json={"session_id": sid, "text": "Plants use sunlight to make food in their leaves."}, headers=hdr)
     body = r.get_data(as_text=True)
     ok = r.status_code == 200 and r.get_json().get("next_question")
     check("AI asks a follow-up question through /session/answer", ok, f"HTTP {r.status_code}: {body.strip()}\n        {hint(body)}")
@@ -129,7 +162,7 @@ def run_real():
     else:
         return
 
-    r = c.get(f"/session/{sid}/result?mode=score")
+    r = c.get(f"/session/{sid}/result?mode=score", headers=hdr)
     body = r.get_data(as_text=True)
     good = False
     if r.status_code == 200:

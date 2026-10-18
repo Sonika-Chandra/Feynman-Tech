@@ -1,46 +1,54 @@
+"""
+The single entry point used by the backend:   extract(path) -> [{"title": str, "text": str}, ...]
+Picks the right reader from the file extension. Every problem is raised as ExtractionError
+with a message that can be shown to the student.
+"""
 import os
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from . import docx_reader, image_reader, pdf_reader, pptx_reader, report_parser, topics
+from .errors import ExtractionError
 
-from docx_reader import extract_docx
-from pptx_reader import extract_pptx
-from pdf_reader import extract_pdf
-from topics import tag_topics
+SUPPORTED = {".pdf", ".pptx", ".docx", ".txt", ".md", ".png", ".jpg", ".jpeg"}
+MIN_CHARS = 30
 
-AUDIO_TYPES = (".mp3", ".wav", ".m4a", ".mp4", ".aac", ".flac", ".ogg")
-IMAGE_TYPES = (".png", ".jpg", ".jpeg")
+
+def _read_text_file(path):
+    raw = open(path, "rb").read()
+    for enc in ("utf-8-sig", "utf-16", "cp1252"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="ignore")
 
 
 def extract(path):
-    """One entry point. Returns a list of {"title", "text", "topic"}."""
-    ending = os.path.splitext(path)[1].lower()
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".doc":
+        raise ExtractionError("Old .doc files are not supported. Save it as .docx and upload it again.")
+    if ext == ".ppt":
+        raise ExtractionError("Old .ppt files are not supported. Save it as .pptx and upload it again.")
+    if ext not in SUPPORTED:
+        raise ExtractionError(f"File type '{ext}' is not supported. Use: {', '.join(sorted(SUPPORTED))}.")
 
-    if ending == ".docx":
-        return tag_topics(extract_docx(path))
-    if ending == ".pptx":
-        return tag_topics(extract_pptx(path))
-    if ending == ".pdf":
-        return tag_topics(extract_pdf(path))
+    try:
+        if ext == ".pdf":
+            sections = pdf_reader.read(path)
+        elif ext == ".pptx":
+            sections = pptx_reader.read(path)
+        elif ext == ".docx":
+            sections = docx_reader.read(path)
+        elif ext in (".png", ".jpg", ".jpeg"):
+            sections = image_reader.read(path)
+        else:
+            text = _read_text_file(path)
+            sections = report_parser.to_sections(text) if report_parser.is_report(text) else topics.split_sections(text)
+    except ExtractionError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise ExtractionError(f"Could not read this {ext} file ({type(e).__name__}).") from e
 
-    if ending in AUDIO_TYPES:
-        from audio import transcribe
-        text = transcribe(path)
-        return [{"title": "Audio transcript", "text": text, "topic": "transcript"}]
-
-    if ending in IMAGE_TYPES:
-        from image_reader import read_flowchart
-        steps = read_flowchart(path)
-        text = "\n".join(f"{n}. {s}" for n, s in enumerate(steps, start=1))
-        return tag_topics([{"title": "Flowchart steps", "text": text}])
-
-    raise ValueError("Unsupported file type: " + ending)
-
-
-if __name__ == "__main__":
-    import json
-
-    if len(sys.argv) < 2:
-        print("Usage: python ingestion/extract.py <file>")
-        sys.exit(1)
-    print(json.dumps(extract(sys.argv[1]), indent=2, ensure_ascii=False))
+    sections = topics.finalize(sections)
+    if sum(len(s["text"]) for s in sections) < MIN_CHARS:
+        raise ExtractionError("Could not find enough readable text in this file.")
+    return sections
