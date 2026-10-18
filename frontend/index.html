@@ -10,12 +10,12 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="app">
+<div id="app" style="border:none;">
 
-  <header class="topbar" id="topbar" hidden>
-    <a class="brand" href="#" id="brandLink"><span class="brand-mark">V</span><span>Vocalis</span></a>
-    <nav class="topnav" aria-label="Main">
-      <button class="nav-link" data-nav="home">Home</button>
+  <header class="topbar" id="topbar" hidden >
+    <a class="brand" href="#" id="brandLink"><span class="brand-mark">V</span><span>Vocalis</span></a><em></em><em></em>
+    <nav class="topnav" aria-label="Main" style="border:none;" >
+      <button class="nav-link" data-nav="home">Home</button><em></em>
       <button class="nav-link" data-nav="about">About</button>
     </nav>
     <div class="topbar-right" id="topbarRight">
@@ -87,7 +87,7 @@
           <label class="field lang-field">
             <span>Revision notes language</span>
             <select id="langSelect">
-              <option>Kannada</option><option>Hindi</option><option>Tamil</option><option>Telugu</option><option>Malayalam</option><option>English</option>
+              <option >Kannada</option><option>Hindi</option><option>Tamil</option><option>Telugu</option><option>Malayalam</option><option>English</option>
             </select>
           </label>
         </div>
@@ -175,14 +175,14 @@
         </div>
         <div class="setting">
           <span class="setting-label">Speech language</span>
-          <select id="speechLang" aria-label="Speech language">
-            <option value="en-IN">English (India)</option>
-            <option value="en-US">English (US)</option>
-            <option value="en-GB">English (UK)</option>
-            <option value="hi-IN">Hindi</option>
-            <option value="kn-IN">Kannada</option>
-            <option value="ta-IN">Tamil</option>
-            <option value="te-IN">Telugu</option>
+          <select id="speechLang" aria-label="Speech language"  >
+            <option value="en-IN" >English (India)</option>
+            <option value="en-US" >English (US)</option>
+            <option value="en-GB" >English (UK)</option>
+            <option value="hi-IN" >Hindi</option>
+            <option value="kn-IN" >Kannada</option>
+            <option value="ta-IN" >Tamil</option>
+            <option value="te-IN" >Telugu</option>
           </select>
         </div>
         <label class="check"><input type="checkbox" id="optAccurate"><span><b>Accurate voice mode</b> Gemini listens to your recording again for a more exact transcript (uses one extra AI request per spoken answer).</span></label>
@@ -190,8 +190,8 @@
         <div class="setting" id="voiceBox">
           <span class="setting-label">Voice</span>
           <select id="voiceEngine" aria-label="Voice type">
-            <option value="ai">AI voice (natural, uses 1 AI request per question)</option>
-            <option value="browser">Device voice (free, instant)</option>
+            <option value="ai" class= "dropdown">AI voice (natural, uses 1 AI request per question)</option>
+            <option value="browser" class= "dropdown">Device voice (free, instant)</option>
           </select>
           <select id="voiceName" aria-label="Voice"></select>
           <button type="button" class="btn ghost" id="voicePreview">Preview</button>
